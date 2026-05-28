@@ -214,6 +214,7 @@
     const chX = Math.ceil(gridX / CHUNK), chZ = Math.ceil(gridZ / CHUNK), chY = Math.ceil(gridY / CHUNK);
     const chunks = new Array(chX * chZ * chY).fill(null);
     const allChunkMeshes = [];
+    const visibleMeshes = [];
     for (let cx = 0; cx < chX; cx++) {
       for (let cz = 0; cz < chZ; cz++) {
         for (let cy = 0; cy < chY; cy++) {
@@ -257,6 +258,7 @@
           mesh.instanceColor = new THREE.InstancedBufferAttribute(colArr, 3);
           scene.add(mesh);
           allChunkMeshes.push(mesh);
+          visibleMeshes.push(mesh);
           const cIdx = ((cx * chZ + cz) * chY) + cy;
           chunks[cIdx] = {
             mesh, states, nx, ny, nz, sx, sy, sz,
@@ -294,11 +296,19 @@
     scene.add(playerBody);
 
     const raycaster = new THREE.Raycaster();
-    const scrapItems = [];
     const scrapTex = new THREE.TextureLoader().load('./Paper Scrap.png');
     const scrapMat = new THREE.MeshStandardMaterial({ map: scrapTex, transparent: true });
     const scrapGeo = new THREE.BoxGeometry(0.3, 0.08, 0.3);
     const scrapDummy = new THREE.Object3D();
+    const scrapPool = [];
+    const scrapItems = [];
+    const POOL_SIZE = 200;
+    for (let i = 0; i < POOL_SIZE; i++) {
+      const m = new THREE.Mesh(scrapGeo, scrapMat);
+      m.visible = false;
+      scene.add(m);
+      scrapPool.push(m);
+    }
 
     function isSolidBlock(bx, bz, by) {
       if (bx < 0 || bx >= gridX || bz < 0 || bz >= gridZ || by < 0 || by >= gridY) return false;
@@ -340,15 +350,15 @@
 
       const scrapCount = 5 + Math.floor(Math.random() * 3);
       for (let s = 0; s < scrapCount; s++) {
-        const mesh = new THREE.Mesh(scrapGeo, scrapMat);
+        const poolIdx = scrapItems.length + s;
+        if (poolIdx >= POOL_SIZE) break;
+        const mesh = scrapPool[poolIdx];
         mesh.position.set(
           bp.x + (Math.random() - 0.5) * 0.6,
           bp.y + 0.5,
           bp.z + (Math.random() - 0.5) * 0.6
         );
-        mesh.receiveShadow = true;
-        mesh.castShadow = true;
-        scene.add(mesh);
+        mesh.visible = true;
         scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0 });
       }
     }
@@ -385,7 +395,7 @@
       const sel = inventory[selectedSlot];
       if (!sel || sel.type !== 'paper_block' || sel.count <= 0) return;
       raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-      const hits = raycaster.intersectObjects(allChunkMeshes);
+      const hits = raycaster.intersectObjects(visibleMeshes);
       if (!hits.length) return;
       const chunk = chunks.find(c => c && c.mesh === hits[0].object);
       if (!chunk) return;
@@ -985,7 +995,7 @@
         if (dist2 < 1.5 * 1.5) {
           s.pickupTimer += dt;
           if (s.pickupTimer >= 0.7) {
-            scene.remove(s.mesh);
+            s.mesh.visible = false;
             addToInventory('scrap');
             scrapItems.splice(i, 1);
           }
@@ -998,7 +1008,7 @@
         if (breakNeedsTarget) {
           breakNeedsTarget = false;
           raycaster.setFromCamera({ x: 0, y: 0 }, camera);
-          const hits = raycaster.intersectObjects(allChunkMeshes);
+          const hits = raycaster.intersectObjects(visibleMeshes);
           if (hits.length) {
             const chunk = chunks.find(c => c && c.mesh === hits[0].object);
             if (chunk) {
@@ -1041,6 +1051,12 @@
         if (far !== c.isFar) {
           c.isFar = far;
           c.mesh.visible = !far;
+          if (far) {
+            const vi = visibleMeshes.indexOf(c.mesh);
+            if (vi >= 0) visibleMeshes.splice(vi, 1);
+          } else {
+            visibleMeshes.push(c.mesh);
+          }
         }
       }
 

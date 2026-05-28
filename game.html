@@ -537,7 +537,7 @@
         tapHolding = false;
         if (tapTimer) clearTimeout(tapTimer);
         tapTimer = setTimeout(() => {
-          if (!tapMoved && document.pointerLockElement === renderer.domElement) {
+          if (!tapMoved && blocker.style.display === 'none' && !isCrafting) {
             tapHolding = true;
             isBreaking = true;
             breakNeedsTarget = true;

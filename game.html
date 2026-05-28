@@ -43,17 +43,15 @@
     .item-img { width:36px; height:36px; object-fit:contain; }
     .count { position:absolute; bottom:1px; right:4px; font-size:13px; font-weight:700; color:#222; text-shadow:0 0 3px #fff; }
     #mobile-controls { position:fixed; inset:0; z-index:15; display:none; touch-action:none; }
-    #joystick-zone { position:absolute; left:20px; bottom:30px; width:130px; height:130px; }
+    #joystick-zone { position:absolute; left:14px; bottom:22px; width:100px; height:100px; }
     #joystick-base { width:100%; height:100%; border-radius:50%; background:rgba(255,255,255,0.2); border:2px solid rgba(255,255,255,0.4); position:relative; }
-    #joystick-knob { width:50px; height:50px; border-radius:50%; background:rgba(255,255,255,0.6); position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+    #joystick-knob { width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,0.6); position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
     #touch-look { position:absolute; inset:0; z-index:-1; }
-    .mb { position:absolute; padding:12px 18px; font-size:14px; font-weight:700; border:2px solid rgba(255,255,255,0.4); border-radius:12px; background:rgba(255,255,255,0.2); color:#fff; font-family:"Poppins",sans-serif; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+    .mb { position:absolute; padding:8px 12px; font-size:12px; font-weight:700; border:2px solid rgba(255,255,255,0.4); border-radius:10px; background:rgba(255,255,255,0.2); color:#fff; font-family:"Poppins",sans-serif; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .mb:active { background:rgba(255,255,255,0.45); }
-    #btn-jump { right:25px; bottom:100px; padding:16px 22px; font-size:16px; }
-    #btn-place { right:25px; bottom:190px; }
-    #btn-break { right:25px; bottom:260px; padding:16px 22px; font-size:16px; }
-    #btn-craft { right:25px; top:70px; }
-    #btn-jump, #btn-break { border-radius:50%; width:70px; height:70px; display:flex; align-items:center; justify-content:center; }
+    #btn-jump { right:18px; bottom:70px; border-radius:50%; width:56px; height:56px; display:flex; align-items:center; justify-content:center; font-size:14px; }
+    #btn-craft { right:18px; top:60px; }
+    #btn-break, #btn-place { display:none; }
   </style>
 </head>
 <body>
@@ -85,8 +83,8 @@
     <div id="touch-look"></div>
     <div id="joystick-zone"><div id="joystick-base"><div id="joystick-knob"></div></div></div>
     <button class="mb" id="btn-jump">JUMP</button>
-    <button class="mb" id="btn-place">PLACE</button>
-    <button class="mb" id="btn-break">BREAK</button>
+    <button class="mb" id="btn-break" style="display:none">BREAK</button>
+    <button class="mb" id="btn-place" style="display:none">PLACE</button>
     <button class="mb" id="btn-craft">CRAFT</button>
   </div>
 
@@ -98,7 +96,7 @@
         <span class="hint" id="selectedHint">Select a recipe</span>
         <button id="craftBtn" disabled>Make</button>
       </div>
-      <div class="close-hint">Press <b>E</b> to close</div>
+      <div class="close-hint">Press <b>E</b> or tap outside to close</div>
     </div>
   </div>
 
@@ -517,28 +515,57 @@
     });
 
     if (isTouch) {
-      document.querySelector('.close-hint').innerHTML = 'Tap <b>CRAFT</b> to close';
+      document.querySelector('.close-hint').textContent = 'Tap outside or tap CRAFT to close';
       let jActive = false, jId = -1, jCX = 0, jCY = 0;
       const jb = document.getElementById('joystick-base'), jk = document.getElementById('joystick-knob'), jz = document.getElementById('joystick-zone');
-      const jr = 40;
+      const jr = 32;
       const tlook = document.getElementById('touch-look');
       let lookId = -1, lx = 0, ly = 0;
+      let tapTimer = null, tapStart = 0, tapX = 0, tapY = 0, tapMoved = false, tapHolding = false;
 
       jz.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.changedTouches[0]; jActive = true; jId = t.identifier; const r = jz.getBoundingClientRect(); jCX = r.left + r.width/2; jCY = r.top + r.height/2; }, { passive: false });
-      jz.addEventListener('touchmove', (e) => { e.preventDefault(); const t = Array.from(e.changedTouches).find(tt => tt.identifier === jId); if (!t) return; let dx = t.clientX - jCX, dy = t.clientY - jCY; const d = Math.sqrt(dx*dx+dy*dy); if (d > jr) { dx = dx/d*jr; dy = dy/d*jr; } jk.style.transform = 'translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))'; velX = dx/jr; velZ = dy/jr; }, { passive: false });
+      jz.addEventListener('touchmove', (e) => { e.preventDefault(); const t = Array.from(e.changedTouches).find(tt => tt.identifier === jId); if (!t) return; let dx = t.clientX - jCX, dy = t.clientY - jCY; const d = Math.sqrt(dx*dx+dy*dy); if (d > jr) { dx = dx/d*jr; dy = dy/d*jr; } jk.style.transform = 'translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))'; velX = dx/jr; velZ = -dy/jr; }, { passive: false });
       jz.addEventListener('touchend', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === jId); if (!t) return; jActive = false; velX = 0; velZ = 0; jk.style.transform = ''; }, { passive: false });
 
-      tlook.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; lookId = t.identifier; lx = t.clientX; ly = t.clientY; }, { passive: false });
-      document.addEventListener('touchmove', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId); if (!t) return; const dx = t.clientX - lx, dy = t.clientY - ly; lx = t.clientX; ly = t.clientY; yaw -= dx * 0.005; pitch -= dy * 0.005; const pl = Math.PI/2; pitch = Math.max(-pl, Math.min(pl, pitch)); }, { passive: false });
-      document.addEventListener('touchend', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId); if (t) lookId = -1; }, { passive: false });
+      tlook.addEventListener('touchstart', (e) => {
+        const t = e.changedTouches[0];
+        lookId = t.identifier;
+        lx = t.clientX; ly = t.clientY;
+        tapX = t.clientX; tapY = t.clientY;
+        tapStart = Date.now();
+        tapMoved = false;
+        tapHolding = false;
+        if (tapTimer) clearTimeout(tapTimer);
+        tapTimer = setTimeout(() => {
+          if (!tapMoved && document.pointerLockElement === renderer.domElement) {
+            tapHolding = true;
+            isBreaking = true;
+            breakNeedsTarget = true;
+          }
+        }, 400);
+      }, { passive: false });
+      document.addEventListener('touchmove', (e) => {
+        const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId);
+        if (!t) return;
+        const dx = t.clientX - lx, dy = t.clientY - ly;
+        if (Math.abs(t.clientX - tapX) > 8 || Math.abs(t.clientY - tapY) > 8) tapMoved = true;
+        lx = t.clientX; ly = t.clientY;
+        yaw -= dx * 0.005; pitch -= dy * 0.005;
+        const pl = Math.PI/2; pitch = Math.max(-pl, Math.min(pl, pitch));
+      }, { passive: false });
+      document.addEventListener('touchend', (e) => {
+        const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId);
+        if (!t) return;
+        lookId = -1;
+        if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
+        if (!tapMoved && !tapHolding && (Date.now() - tapStart) < 400) {
+          tryPlaceBlock();
+        }
+        if (tapHolding && isBreaking) resetBreak();
+      }, { passive: false });
 
       document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); keys['Space'] = true; }, { passive: false });
       document.getElementById('btn-jump').addEventListener('touchend', (e) => { e.preventDefault(); keys['Space'] = false; }, { passive: false });
-
-      document.getElementById('btn-break').addEventListener('touchstart', (e) => { e.preventDefault(); isBreaking = true; }, { passive: false });
-      document.getElementById('btn-break').addEventListener('touchend', (e) => { e.preventDefault(); if (isBreaking) resetBreak(); }, { passive: false });
-
-      document.getElementById('btn-place').addEventListener('touchstart', (e) => { e.preventDefault(); tryPlaceBlock(); }, { passive: false });
 
       document.getElementById('btn-craft').addEventListener('touchstart', (e) => {
         e.preventDefault();
@@ -547,6 +574,19 @@
         else { document.getElementById('crafting').style.display = 'none'; }
       });
     }
+
+    document.getElementById('crafting').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        isCrafting = false;
+        document.getElementById('crafting').style.display = 'none';
+      }
+    });
+    document.getElementById('crafting').addEventListener('touchstart', (e) => {
+      if (e.target === e.currentTarget) {
+        isCrafting = false;
+        document.getElementById('crafting').style.display = 'none';
+      }
+    });
 
     window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth/window.innerHeight;
@@ -648,7 +688,20 @@
           card.classList.add('selected');
           selectedRecipe = r.id;
           updateCraftButtons();
-        });
+    });
+
+    document.getElementById('crafting').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) {
+        isCrafting = false;
+        document.getElementById('crafting').style.display = 'none';
+      }
+    });
+    document.getElementById('crafting').addEventListener('touchstart', (e) => {
+      if (e.target === e.currentTarget) {
+        isCrafting = false;
+        document.getElementById('crafting').style.display = 'none';
+      }
+    }, { passive: false });
         recipeGrid.appendChild(card);
       }
     }

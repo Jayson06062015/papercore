@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" style="touch-action:manipulation">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
@@ -60,7 +60,7 @@
     <button id="playBtn">PLAY</button>
     <div class="setting">
       <label for="rdSlider">Render Distance:</label>
-      <input type="range" id="rdSlider" min="8" max="60" value="20" step="1">
+      <input type="range" id="rdSlider" min="8" max="150" value="20" step="1">
       <span id="rdValue">20</span>
     </div>
   </div>
@@ -141,7 +141,7 @@
     const scene = new THREE.Scene();
     scene.background = skyTex;
     scene.fog = new THREE.Fog(0xdceeff, renderDist * 0.3, renderDist * 1.2);
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 500);
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 
     let renderer;
     try {
@@ -382,7 +382,8 @@
       if (e.button === 0 && isBreaking) resetBreak();
     });
     function tryPlaceBlock() {
-      if (countItem('paper_block') < 1) return;
+      const sel = inventory[selectedSlot];
+      if (!sel || sel.type !== 'paper_block' || sel.count <= 0) return;
       raycaster.setFromCamera({ x: 0, y: 0 }, camera);
       const hits = raycaster.intersectObjects(allChunkMeshes);
       if (!hits.length) return;

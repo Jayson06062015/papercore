@@ -510,6 +510,7 @@
     let isCrafting = false;
     let isBreaking = false;
     let isPaused = false;
+    let gameStarted = false;
     let breakProgress = 0;
     let breakChunk = null;
     let breakId = -1;
@@ -527,6 +528,7 @@
     rdSlider.value = renderDist;
 
     function startGame() {
+      gameStarted = true;
       blocker.style.display = 'none';
       document.getElementById('crosshair').style.display = 'block';
       document.getElementById('fps').style.display = 'block';
@@ -534,6 +536,7 @@
     }
 
     playBtn.addEventListener('click', () => {
+      gameStarted = true;
       if (isTouch) { startGame(); mc.style.display = 'block'; }
       else { renderer.domElement.requestPointerLock(); }
     });
@@ -556,10 +559,34 @@
       if (isTouch) return;
       const fpsEl = document.getElementById('fps');
       const locked = document.pointerLockElement;
-      blocker.style.display = (locked || isCrafting) ? 'none' : 'flex';
-      document.getElementById('crosshair').style.display = locked ? 'block' : 'none';
-      fpsEl.style.display = locked ? 'block' : 'none';
-      document.getElementById('inventory').style.display = (locked || isCrafting) ? 'flex' : 'none';
+      const pauseOverlay = document.getElementById('pause-overlay');
+      if (locked) {
+        isPaused = false;
+        blocker.style.display = 'none';
+        pauseOverlay.style.display = 'none';
+        document.getElementById('crosshair').style.display = 'block';
+        fpsEl.style.display = 'block';
+        document.getElementById('inventory').style.display = isCrafting ? 'flex' : 'flex';
+      } else if (isCrafting) {
+        pauseOverlay.style.display = 'none';
+        blocker.style.display = 'none';
+        document.getElementById('crosshair').style.display = 'none';
+        fpsEl.style.display = 'none';
+        document.getElementById('inventory').style.display = 'flex';
+      } else if (gameStarted) {
+        isPaused = true;
+        pauseOverlay.style.display = 'flex';
+        blocker.style.display = 'none';
+        document.getElementById('crosshair').style.display = 'none';
+        fpsEl.style.display = 'none';
+        document.getElementById('inventory').style.display = 'none';
+      } else {
+        blocker.style.display = 'flex';
+        pauseOverlay.style.display = 'none';
+        document.getElementById('crosshair').style.display = 'none';
+        fpsEl.style.display = 'none';
+        document.getElementById('inventory').style.display = 'none';
+      }
     });
 
     document.addEventListener('mousemove', (e) => {
@@ -681,8 +708,12 @@
     document.getElementById('btn-resume').addEventListener('click', () => {
       isPaused = false;
       document.getElementById('pause-overlay').style.display = 'none';
+      if (!isTouch && document.pointerLockElement !== renderer.domElement) {
+        renderer.domElement.requestPointerLock();
+      }
     });
     document.getElementById('btn-back-menu').addEventListener('click', () => {
+      if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
       window.location.href = 'index.html';
     });
     document.getElementById('btn-resume').addEventListener('touchstart', (e) => {
@@ -692,6 +723,7 @@
     }, { passive: false });
     document.getElementById('btn-back-menu').addEventListener('touchstart', (e) => {
       e.preventDefault();
+      window.location.href = 'index.html';
       window.location.href = 'index.html';
     }, { passive: false });
 

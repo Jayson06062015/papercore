@@ -187,7 +187,7 @@
       return Math.max(1, Math.round(30 + n));
     }
 
-    const blockTex = new THREE.TextureLoader().load('../Papercore/Paper Block.png');
+    const blockTex = new THREE.TextureLoader().load('./Paper Block.png');
     blockTex.colorSpace = THREE.SRGBColorSpace;
     const blockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: blockTex, roughness: 0.8 });
     const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
@@ -265,7 +265,7 @@
       return { x: (c.sx + t1) - halfX + 0.5, z: (c.sz + t3) - halfZ + 0.5, y: (c.sy + t4) + 0.5 };
     }
     const PH = 0.9;
-    const playerTex = new THREE.TextureLoader().load('../Papercore/Papey.png');
+    const playerTex = new THREE.TextureLoader().load('./Papey.png');
     const playerBody = new THREE.Mesh(
       new THREE.BoxGeometry(0.8, PH, 0.1),
       new THREE.MeshStandardMaterial({ map: playerTex, transparent: true, roughness: 0.6 })
@@ -278,7 +278,7 @@
 
     const raycaster = new THREE.Raycaster();
     const scrapItems = [];
-    const scrapTex = new THREE.TextureLoader().load('../Papercore/Paper Scrap.png');
+    const scrapTex = new THREE.TextureLoader().load('./Paper Scrap.png');
     const scrapMat = new THREE.MeshStandardMaterial({ map: scrapTex, transparent: true });
     const scrapGeo = new THREE.BoxGeometry(0.3, 0.08, 0.3);
     const scrapDummy = new THREE.Object3D();
@@ -535,12 +535,12 @@
     const inventory = Array.from({ length: 8 }, () => ({ type: null, count: 0, durability: [] }));
     let selectedSlot = 0;
     const srcMap = {
-      water:'../Papercore/Water Ball.png', paperball:'../Papercore/Paper Ball.png',
-      reinforced:'../Papercore/Reinforced Paper Ball.png', scrap:'../Papercore/Paper Scrap.png',
-      plastic:'../Papercore/Plastic Piece.png', glue:'../Papercore/Glue.png',
-      attachable:'../Papercore/Attachable Paper Scrap.png', cartolina:'../Papercore/Cartolina Scrap.png',
-      shield:'../Papercore/Paper Shield.png', reinforced_shield:'../Papercore/Reinforced Paper Shield.png',
-      paper_block:'../Papercore/Paper Block.png', reinforced_block:'../Papercore/Reinforced Paper Block.png'
+      water:'./Water Ball.png', paperball:'./Paper Ball.png',
+      reinforced:'./Reinforced Paper Ball.png', scrap:'./Paper Scrap.png',
+      plastic:'./Plastic Piece.png', glue:'./Glue.png',
+      attachable:'./Attachable Paper Scrap.png', cartolina:'./Cartolina Scrap.png',
+      shield:'./Paper Shield.png', reinforced_shield:'./Reinforced Paper Shield.png',
+      paper_block:'./Paper Block.png', reinforced_block:'./Reinforced Paper Block.png'
     };
 
     function updateSlot(i) {
@@ -549,7 +549,7 @@
       slot.innerHTML = '';
       if (!it.type || it.count <= 0) { it.type = null; it.count = 0; it.durability = []; return; }
       const img = document.createElement('img'); img.className = 'item-img';
-      img.src = srcMap[it.type] || '../Papercore/Paper Scrap.png';
+      img.src = srcMap[it.type] || './Paper Scrap.png';
       slot.appendChild(img);
       const label = document.createElement('div'); label.className = 'count';
       label.textContent = (it.type === 'shield' || it.type === 'reinforced_shield') ? (it.durability[0] ?? '') : it.count;
@@ -606,7 +606,7 @@
     }
 
     const recipes = [
-      { id: 'paper_block', name: 'Paper Block', result: 'paper_block', resultImg: '../Papercore/Paper Block.png', ingredients: [{ type: 'scrap', count: 8, img: '../Papercore/Paper Scrap.png' }] },
+      { id: 'paper_block', name: 'Paper Block', result: 'paper_block', resultImg: './Paper Block.png', ingredients: [{ type: 'scrap', count: 8, img: './Paper Scrap.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');

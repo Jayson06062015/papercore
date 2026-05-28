@@ -50,8 +50,15 @@
     .mb { position:absolute; padding:8px 12px; font-size:12px; font-weight:700; border:2px solid rgba(255,255,255,0.4); border-radius:10px; background:rgba(255,255,255,0.2); color:#fff; font-family:"Poppins",sans-serif; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .mb:active { background:rgba(255,255,255,0.45); }
     #btn-jump { right:18px; bottom:70px; border-radius:50%; width:56px; height:56px; display:flex; align-items:center; justify-content:center; font-size:14px; }
-    #btn-craft { right:18px; top:60px; }
+    #btn-craft { right:18px; top:16px; }
+    #btn-pause { right:18px; top:76px; font-size:11px; padding:6px 10px; }
+    #btn-tp { right:18px; top:132px; font-size:11px; padding:6px 10px; }
     #btn-break, #btn-place { display:none; }
+    #pause-overlay { position:fixed; inset:0; z-index:40; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; }
+    #pause-overlay .pause-window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:30px; text-align:center; box-shadow:0 0 40px rgba(139,92,246,0.3); }
+    #pause-overlay h2 { margin:0 0 20px; font-size:28px; color:#4c1d95; font-weight:900; }
+    #pause-overlay button { display:block; width:200px; margin:10px auto; padding:12px 20px; font-size:16px; font-weight:700; border:2px solid #6d28d9; border-radius:8px; background:#8b5cf6; color:#fff; cursor:pointer; font-family:"Poppins",sans-serif; }
+    #pause-overlay button:hover { background:#7c3aed; }
   </style>
 </head>
 <body>
@@ -86,6 +93,16 @@
     <button class="mb" id="btn-break" style="display:none">BREAK</button>
     <button class="mb" id="btn-place" style="display:none">PLACE</button>
     <button class="mb" id="btn-craft">CRAFT</button>
+    <button class="mb" id="btn-pause">PAUSE</button>
+    <button class="mb" id="btn-tp">TP</button>
+  </div>
+
+  <div id="pause-overlay">
+    <div class="pause-window">
+      <h2>PAUSED</h2>
+      <button id="btn-resume">RESUME</button>
+      <button id="btn-back-menu">BACK TO MENU</button>
+    </div>
   </div>
 
   <div id="crafting">
@@ -484,6 +501,7 @@
     let thirdPerson = false;
     let isCrafting = false;
     let isBreaking = false;
+    let isPaused = false;
     let breakProgress = 0;
     let breakChunk = null;
     let breakId = -1;
@@ -638,7 +656,36 @@
         const slot = document.getElementById('slot' + i);
         slot.addEventListener('touchstart', (e) => { e.preventDefault(); selectedSlot = i - 1; updateInventoryUI(); }, { passive: false });
       }
+
+      document.getElementById('btn-pause').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isPaused = !isPaused;
+        document.getElementById('pause-overlay').style.display = isPaused ? 'flex' : 'none';
+      }, { passive: false });
+
+      document.getElementById('btn-tp').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        thirdPerson = !thirdPerson;
+        playerBody.visible = thirdPerson;
+      }, { passive: false });
     }
+
+    document.getElementById('btn-resume').addEventListener('click', () => {
+      isPaused = false;
+      document.getElementById('pause-overlay').style.display = 'none';
+    });
+    document.getElementById('btn-back-menu').addEventListener('click', () => {
+      window.location.href = 'index.html';
+    });
+    document.getElementById('btn-resume').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      isPaused = false;
+      document.getElementById('pause-overlay').style.display = 'none';
+    }, { passive: false });
+    document.getElementById('btn-back-menu').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      window.location.href = 'index.html';
+    }, { passive: false });
 
     document.getElementById('crafting').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) {
@@ -818,6 +865,8 @@
       }
 
       playerBody.quaternion.setFromEuler(new THREE.Euler(0, yaw, 0));
+
+      if (isPaused) { renderer.render(scene, camera); return; }
 
       if (thirdPerson) {
         const dist = 4;
@@ -1090,21 +1139,23 @@
       }
 
       const rd2c = (renderDist + CHUNK) * (renderDist + CHUNK);
-      for (let i = 0; i < chunks.length; i++) {
-        const c = chunks[i];
-        if (!c) continue;
-        const dx = c.center.x - playerBody.position.x;
-        const dy = c.center.y - playerBody.position.y;
-        const dz = c.center.z - playerBody.position.z;
-        const far = dx * dx + dy * dy + dz * dz > rd2c;
-        if (far !== c.isFar) {
-          c.isFar = far;
-          c.mesh.visible = !far;
-          if (far) {
-            const vi = visibleMeshes.indexOf(c.mesh);
-            if (vi >= 0) visibleMeshes.splice(vi, 1);
-          } else {
-            visibleMeshes.push(c.mesh);
+      if ((fpsFrames % 10) === 0) {
+        for (let i = 0; i < chunks.length; i++) {
+          const c = chunks[i];
+          if (!c) continue;
+          const dx = c.center.x - playerBody.position.x;
+          const dy = c.center.y - playerBody.position.y;
+          const dz = c.center.z - playerBody.position.z;
+          const far = dx * dx + dy * dy + dz * dz > rd2c;
+          if (far !== c.isFar) {
+            c.isFar = far;
+            c.mesh.visible = !far;
+            if (far) {
+              const vi = visibleMeshes.indexOf(c.mesh);
+              if (vi >= 0) visibleMeshes.splice(vi, 1);
+            } else {
+              visibleMeshes.push(c.mesh);
+            }
           }
         }
       }

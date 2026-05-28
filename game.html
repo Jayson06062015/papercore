@@ -76,6 +76,7 @@
       <span id="rdValue">20</span>
     </div>
   </div>
+  </div>
 
   <div id="crosshair">+</div>
   <div id="fps">0 FPS</div>
@@ -105,6 +106,24 @@
   <div id="pause-overlay">
     <div class="pause-window">
       <h2>PAUSED</h2>
+      <div class="setting">
+        <label for="rdSlider">Render Distance:</label>
+        <input type="range" id="rdSlider" min="8" max="150" value="20" step="1">
+        <span id="rdValue">20</span>
+      </div>
+      <button id="btn-resume">RESUME</button>
+      <button id="btn-back-menu">BACK TO MENU</button>
+    </div>
+  </div>
+
+  <div id="pause-overlay">
+    <div class="pause-window">
+      <h2>PAUSED</h2>
+      <div class="setting">
+        <label>Render Distance:</label>
+        <input type="range" id="rdSlider2" min="8" max="150" value="20" step="1">
+        <span id="rdValue2">20</span>
+      </div>
       <button id="btn-resume">RESUME</button>
       <button id="btn-back-menu">BACK TO MENU</button>
     </div>
@@ -523,9 +542,12 @@
     const playBtn = document.getElementById('playBtn');
     const rdSlider = document.getElementById('rdSlider');
     const rdValue = document.getElementById('rdValue');
+    const rdSlider2 = document.getElementById('rdSlider2');
+    const rdValue2 = document.getElementById('rdValue2');
     const isTouch = 'ontouchstart' in window;
     const mc = document.getElementById('mobile-controls');
     rdSlider.value = renderDist;
+    if (rdSlider2) rdSlider2.value = renderDist;
 
     function startGame() {
       gameStarted = true;
@@ -546,10 +568,26 @@
     scene.fog.far = renderDist * 1.2;
     scene.fog.near = renderDist * 0.3;
 
+    if (rdSlider2) {
+      rdSlider2.value = renderDist;
+      rdValue2.textContent = renderDist;
+    }
+
     rdSlider.addEventListener('input', updateRenderDist);
     rdSlider.addEventListener('change', updateRenderDist);
+    if (rdSlider2) { rdSlider2.addEventListener('input', updateRenderDist2); rdSlider2.addEventListener('change', updateRenderDist2); }
     function updateRenderDist() {
       renderDist = parseInt(rdSlider.value);
+      rdValue.textContent = renderDist;
+      if (rdSlider2) rdSlider2.value = renderDist;
+      if (rdValue2) rdValue2.textContent = renderDist;
+      scene.fog.far = renderDist * 1.2;
+      scene.fog.near = renderDist * 0.3;
+    }
+    function updateRenderDist2() {
+      renderDist = parseInt(rdSlider2.value);
+      if (rdValue2) rdValue2.textContent = renderDist;
+      rdSlider.value = renderDist;
       rdValue.textContent = renderDist;
       scene.fog.far = renderDist * 1.2;
       scene.fog.near = renderDist * 0.3;

@@ -273,6 +273,56 @@
       }
     }
     function getChunk(cx, cz, cy) { return chunks[((cx * chZ + cz) * chY) + cy]; }
+    function ensureChunk(cx, cz, cy) {
+      const idx = ((cx * chZ + cz) * chY) + cy;
+      let c = chunks[idx];
+      if (c) return c;
+      const sx = cx * CHUNK, sz = cz * CHUNK, sy = cy * CHUNK;
+      const ex = Math.min(sx + CHUNK, gridX), ez = Math.min(sz + CHUNK, gridZ), ey = Math.min(sy + CHUNK, gridY);
+      const nx = ex - sx, nz = ez - sz, ny = ey - sy;
+      const count = nx * nz * ny;
+      const mesh = new THREE.InstancedMesh(cubeGeo, blockMat, count);
+      const states = new Uint8Array(count);
+      let i = 0;
+      for (let x = sx; x < ex; x++) {
+        for (let z = sz; z < ez; z++) {
+          const h = terrainHeight(x, z);
+          for (let y = sy; y < ey; y++) {
+            if (y >= h) {
+              states[i] = 1;
+              const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
+              scaleDummy.scale.set(0, 0, 0);
+              scaleDummy.position.set(wx, wy, wz);
+              scaleDummy.updateMatrix();
+              mesh.setMatrixAt(i, scaleDummy.matrix);
+            } else {
+              const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
+              mx.identity().setPosition(wx, wy, wz);
+              mesh.setMatrixAt(i, mx);
+            }
+            i++;
+          }
+        }
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      const colArr = new Float32Array(count * 3);
+      for (let ci = 0; ci < count; ci++) { colArr[ci * 3] = 1; colArr[ci * 3 + 1] = 1; colArr[ci * 3 + 2] = 1; }
+      mesh.instanceColor = new THREE.InstancedBufferAttribute(colArr, 3);
+      scene.add(mesh);
+      allChunkMeshes.push(mesh);
+      c = {
+        mesh, states, nx, ny, nz, sx, sy, sz,
+        center: new THREE.Vector3(
+          (sx + ex - 1) / 2 - halfX + 0.5,
+          (sy + ey - 1) / 2 + 0.5,
+          (sz + ez - 1) / 2 - halfZ + 0.5
+        ),
+        isFar: false
+      };
+      chunks[idx] = c;
+      visibleMeshes.push(mesh);
+      return c;
+    }
     function chunkLocalIdx(c, bx, bz, by) {
       return ((bx - c.sx) * c.nz + (bz - c.sz)) * c.ny + (by - c.sy);
     }
@@ -411,8 +461,7 @@
       const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
       if ((px-0.4) < (bx-halfX+1) && (px+0.4) > (bx-halfX) && (py-0.45) < (by+1) && (py+0.45) > by && (pz-0.05) < (bz-halfZ+1) && (pz+0.05) > (bz-halfZ)) return;
       const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(by / CHUNK);
-      const pChunk = getChunk(cxc, czc, cyc);
-      if (!pChunk) return;
+      const pChunk = ensureChunk(cxc, czc, cyc);
       const pId = chunkLocalIdx(pChunk, bx, bz, by);
       if (pChunk.states[pId] === 0) return;
       removeItems('paper_block', 1);

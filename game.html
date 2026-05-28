@@ -10,7 +10,7 @@
     canvas { display:block; }
     #blocker { position:fixed; inset:0; background:linear-gradient(135deg,#e0e0e0,#ffffff); display:flex; align-items:center; justify-content:center; flex-direction:column; z-index:10; }
     #blocker h1 { font-size:48px; font-weight:900; text-shadow:2px 2px 0 #000; letter-spacing:4px; margin-bottom:30px; }
-    #playBtn { padding:15px 40px; font-size:22px; font-weight:700; border:3px solid black; background:white; cursor:pointer; box-shadow:4px 4px 0 black; transition:0.15s; font-family:"Poppins",sans-serif; }
+    #playBtn { padding:15px 40px; font-size:22px; font-weight:700; border:3px solid black; background:white; cursor:pointer; box-shadow:4px 4px 0 black; transition:0.15s; font-family:"Poppins",sans-serif; color:#000; }
     #playBtn:hover { background:#eee; transform:translate(-2px,-2px); box-shadow:6px 6px 0 black; }
     #playBtn:active { transform:translate(0,0); box-shadow:4px 4px 0 black; }
     .setting { margin-top:20px; display:flex; align-items:center; gap:12px; font-size:16px; font-weight:400; color:#333; }
@@ -47,7 +47,7 @@
     #joystick-base { width:100%; height:100%; border-radius:50%; background:rgba(255,255,255,0.2); border:2px solid rgba(255,255,255,0.4); position:relative; }
     #joystick-knob { width:50px; height:50px; border-radius:50%; background:rgba(255,255,255,0.6); position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
     #touch-look { position:absolute; inset:0; z-index:-1; }
-    .mb { position:absolute; padding:12px 18px; font-size:14px; font-weight:700; border:2px solid rgba(255,255,255,0.4); border-radius:12px; background:rgba(255,255,255,0.2); color:#fff; font-family:"Poppins",sans-serif; user-select:none; -webkit-user-select:none; touch-action:manipulation; }
+    .mb { position:absolute; padding:12px 18px; font-size:14px; font-weight:700; border:2px solid rgba(255,255,255,0.4); border-radius:12px; background:rgba(255,255,255,0.2); color:#fff; font-family:"Poppins",sans-serif; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .mb:active { background:rgba(255,255,255,0.45); }
     #btn-jump { right:25px; bottom:100px; padding:16px 22px; font-size:16px; }
     #btn-place { right:25px; bottom:190px; }
@@ -135,7 +135,13 @@
     scene.fog = new THREE.Fog(0xdceeff, renderDist * 0.3, renderDist * 1.2);
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 500);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
+    } catch (e) {
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:20px;color:#333">WebGL not available on this device.</div>';
+      throw e;
+    }
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
     if (!isMobile) {

@@ -135,7 +135,7 @@
     const skyTex = new THREE.CanvasTexture(canvas);
 
     const isMobile = 'ontouchstart' in window;
-    const gridX = isMobile ? 80 : 600, gridZ = isMobile ? 80 : 600, gridY = 100;
+    const gridX = 600, gridZ = 600, gridY = 100;
     const halfX = gridX / 2, halfZ = gridZ / 2;
     let renderDist = isMobile ? 12 : 20;
     const scene = new THREE.Scene();
@@ -573,6 +573,11 @@
         if (isCrafting) { document.getElementById('crafting').style.display = 'flex'; mc.style.display = 'block'; updateCraftButtons(); }
         else { document.getElementById('crafting').style.display = 'none'; }
       });
+
+      for (let i = 1; i <= 8; i++) {
+        const slot = document.getElementById('slot' + i);
+        slot.addEventListener('touchstart', (e) => { e.preventDefault(); selectedSlot = i - 1; updateInventoryUI(); }, { passive: false });
+      }
     }
 
     document.getElementById('crafting').addEventListener('click', (e) => {

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
   <title>Papercore 3D</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
@@ -125,19 +126,22 @@
     ctx.fillRect(0, 0, 2, 512);
     const skyTex = new THREE.CanvasTexture(canvas);
 
-    const gridX = 600, gridZ = 600, gridY = 100;
+    const isMobile = 'ontouchstart' in window;
+    const gridX = isMobile ? 80 : 600, gridZ = isMobile ? 80 : 600, gridY = 100;
     const halfX = gridX / 2, halfZ = gridZ / 2;
-    let renderDist = 20;
+    let renderDist = isMobile ? 12 : 20;
     const scene = new THREE.Scene();
     scene.background = skyTex;
     scene.fog = new THREE.Fog(0xdceeff, renderDist * 0.3, renderDist * 1.2);
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 500);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: !isMobile });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1 : 2));
+    if (!isMobile) {
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    }
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.5;
     document.body.appendChild(renderer.domElement);
@@ -421,6 +425,7 @@
     const rdValue = document.getElementById('rdValue');
     const isTouch = 'ontouchstart' in window;
     const mc = document.getElementById('mobile-controls');
+    rdSlider.value = renderDist;
 
     function startGame() {
       blocker.style.display = 'none';
@@ -439,12 +444,14 @@
     scene.fog.far = renderDist * 1.2;
     scene.fog.near = renderDist * 0.3;
 
-    rdSlider.addEventListener('input', () => {
+    rdSlider.addEventListener('input', updateRenderDist);
+    rdSlider.addEventListener('change', updateRenderDist);
+    function updateRenderDist() {
       renderDist = parseInt(rdSlider.value);
       rdValue.textContent = renderDist;
       scene.fog.far = renderDist * 1.2;
       scene.fog.near = renderDist * 0.3;
-    });
+    }
 
     document.addEventListener('pointerlockchange', () => {
       if (isTouch) return;
@@ -502,21 +509,21 @@
       const tlook = document.getElementById('touch-look');
       let lookId = -1, lx = 0, ly = 0;
 
-      jz.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.changedTouches[0]; jActive = true; jId = t.identifier; const r = jz.getBoundingClientRect(); jCX = r.left + r.width/2; jCY = r.top + r.height/2; });
-      jz.addEventListener('touchmove', (e) => { e.preventDefault(); const t = Array.from(e.changedTouches).find(tt => tt.identifier === jId); if (!t) return; let dx = t.clientX - jCX, dy = t.clientY - jCY; const d = Math.sqrt(dx*dx+dy*dy); if (d > jr) { dx = dx/d*jr; dy = dy/d*jr; } jk.style.transform = 'translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))'; velX = dx/jr; velZ = dy/jr; });
-      jz.addEventListener('touchend', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === jId); if (!t) return; jActive = false; velX = 0; velZ = 0; jk.style.transform = ''; });
+      jz.addEventListener('touchstart', (e) => { e.preventDefault(); const t = e.changedTouches[0]; jActive = true; jId = t.identifier; const r = jz.getBoundingClientRect(); jCX = r.left + r.width/2; jCY = r.top + r.height/2; }, { passive: false });
+      jz.addEventListener('touchmove', (e) => { e.preventDefault(); const t = Array.from(e.changedTouches).find(tt => tt.identifier === jId); if (!t) return; let dx = t.clientX - jCX, dy = t.clientY - jCY; const d = Math.sqrt(dx*dx+dy*dy); if (d > jr) { dx = dx/d*jr; dy = dy/d*jr; } jk.style.transform = 'translate(calc(-50% + '+dx+'px),calc(-50% + '+dy+'px))'; velX = dx/jr; velZ = dy/jr; }, { passive: false });
+      jz.addEventListener('touchend', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === jId); if (!t) return; jActive = false; velX = 0; velZ = 0; jk.style.transform = ''; }, { passive: false });
 
-      tlook.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; lookId = t.identifier; lx = t.clientX; ly = t.clientY; });
-      document.addEventListener('touchmove', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId); if (!t) return; const dx = t.clientX - lx, dy = t.clientY - ly; lx = t.clientX; ly = t.clientY; yaw -= dx * 0.005; pitch -= dy * 0.005; const pl = Math.PI/2; pitch = Math.max(-pl, Math.min(pl, pitch)); });
-      document.addEventListener('touchend', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId); if (t) lookId = -1; });
+      tlook.addEventListener('touchstart', (e) => { const t = e.changedTouches[0]; lookId = t.identifier; lx = t.clientX; ly = t.clientY; }, { passive: false });
+      document.addEventListener('touchmove', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId); if (!t) return; const dx = t.clientX - lx, dy = t.clientY - ly; lx = t.clientX; ly = t.clientY; yaw -= dx * 0.005; pitch -= dy * 0.005; const pl = Math.PI/2; pitch = Math.max(-pl, Math.min(pl, pitch)); }, { passive: false });
+      document.addEventListener('touchend', (e) => { const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId); if (t) lookId = -1; }, { passive: false });
 
-      document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); keys['Space'] = true; });
-      document.getElementById('btn-jump').addEventListener('touchend', (e) => { e.preventDefault(); keys['Space'] = false; });
+      document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); keys['Space'] = true; }, { passive: false });
+      document.getElementById('btn-jump').addEventListener('touchend', (e) => { e.preventDefault(); keys['Space'] = false; }, { passive: false });
 
-      document.getElementById('btn-break').addEventListener('touchstart', (e) => { e.preventDefault(); isBreaking = true; });
-      document.getElementById('btn-break').addEventListener('touchend', (e) => { e.preventDefault(); if (isBreaking) resetBreak(); });
+      document.getElementById('btn-break').addEventListener('touchstart', (e) => { e.preventDefault(); isBreaking = true; }, { passive: false });
+      document.getElementById('btn-break').addEventListener('touchend', (e) => { e.preventDefault(); if (isBreaking) resetBreak(); }, { passive: false });
 
-      document.getElementById('btn-place').addEventListener('touchstart', (e) => { e.preventDefault(); tryPlaceBlock(); });
+      document.getElementById('btn-place').addEventListener('touchstart', (e) => { e.preventDefault(); tryPlaceBlock(); }, { passive: false });
 
       document.getElementById('btn-craft').addEventListener('touchstart', (e) => {
         e.preventDefault();

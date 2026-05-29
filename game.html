@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-  <title>Papercore 3D</title>
+  <title>Papercore</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
     body { margin:0; overflow:hidden; font-family:"Poppins",sans-serif; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
@@ -296,6 +296,7 @@
     const visibleMeshes = [];
     const chunkKey = (cx, cz, cy) => cx + ',' + cz + ',' + cy;
     function getChunk(cx, cz, cy) { return loadedChunks.get(chunkKey(cx, cz, cy)) || null; }
+    const chunkBuildQueue = [];
     function ensureChunk(cx, cz, cy) {
       const key = chunkKey(cx, cz, cy);
       let c = loadedChunks.get(key);
@@ -304,44 +305,68 @@
       const ex = sx + CHUNK, ez = sz + CHUNK, ey = Math.min(sy + CHUNK, gridY);
       const nx = CHUNK, nz = CHUNK, ny = ey - sy;
       const count = nx * nz * ny;
-      const mesh = new THREE.InstancedMesh(cubeGeo, blockMat, count);
-      const waterMesh = new THREE.InstancedMesh(cubeGeo, waterMat, count);
-      mesh.receiveShadow = true; mesh.castShadow = true;
-      waterMesh.receiveShadow = true; waterMesh.castShadow = true;
       const states = new Uint8Array(count);
       let i = 0;
       for (let x = sx; x < ex; x++) {
         for (let z = sz; z < ez; z++) {
           const h = terrainHeight(x, z);
           for (let y = sy; y < ey; y++) {
+            states[i] = y >= h ? 0 : (Math.random() < 0.05 ? 2 : 1);
+            i++;
+          }
+        }
+      }
+      c = {
+        mesh: null, waterMesh: null, states, nx, ny, nz, sx, sy, sz,
+        center: new THREE.Vector3(
+          (sx + ex - 1) / 2 - halfX + 0.5,
+          (sy + ey - 1) / 2 + 0.5,
+          (sz + ez - 1) / 2 - halfZ + 0.5
+        ),
+        isFar: false, key: key
+      };
+      loadedChunks.set(key, c);
+      chunkBuildQueue.push(key);
+      return c;
+    }
+    function buildChunkMesh(key) {
+      const c = loadedChunks.get(key);
+      if (!c || c.mesh) return;
+      const { sx, sy, sz, nx, ny, nz, states } = c;
+      const ex = sx + CHUNK, ez = sz + CHUNK;
+      const count = nx * nz * ny;
+      const mesh = new THREE.InstancedMesh(cubeGeo, blockMat, count);
+      const waterMesh = new THREE.InstancedMesh(cubeGeo, waterMat, count);
+      mesh.receiveShadow = true; mesh.castShadow = true;
+      waterMesh.receiveShadow = true; waterMesh.castShadow = true;
+      let i = 0;
+      for (let x = sx; x < ex; x++) {
+        for (let z = sz; z < ez; z++) {
+          for (let y = sy; y < ey; y++) {
             const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
-            if (y >= h) {
-              states[i] = 0;
+            const state = states[i];
+            if (state === 0) {
               scaleDummy.scale.set(0, 0, 0);
               scaleDummy.position.set(wx, wy, wz);
               scaleDummy.updateMatrix();
               mesh.setMatrixAt(i, scaleDummy.matrix);
               waterMesh.setMatrixAt(i, scaleDummy.matrix);
+            } else if (state === 2) {
+              scaleDummy.scale.set(1, 1, 1);
+              scaleDummy.position.set(wx, wy, wz);
+              scaleDummy.updateMatrix();
+              waterMesh.setMatrixAt(i, scaleDummy.matrix);
+              scaleDummy.scale.set(0, 0, 0);
+              scaleDummy.updateMatrix();
+              mesh.setMatrixAt(i, scaleDummy.matrix);
             } else {
-              if (Math.random() < 0.05) {
-                states[i] = 2;
-                scaleDummy.scale.set(1, 1, 1);
-                scaleDummy.position.set(wx, wy, wz);
-                scaleDummy.updateMatrix();
-                waterMesh.setMatrixAt(i, scaleDummy.matrix);
-                scaleDummy.scale.set(0, 0, 0);
-                scaleDummy.updateMatrix();
-                mesh.setMatrixAt(i, scaleDummy.matrix);
-              } else {
-                states[i] = 1;
-                scaleDummy.scale.set(1, 1, 1);
-                scaleDummy.position.set(wx, wy, wz);
-                scaleDummy.updateMatrix();
-                mesh.setMatrixAt(i, scaleDummy.matrix);
-                scaleDummy.scale.set(0, 0, 0);
-                scaleDummy.updateMatrix();
-                waterMesh.setMatrixAt(i, scaleDummy.matrix);
-              }
+              scaleDummy.scale.set(1, 1, 1);
+              scaleDummy.position.set(wx, wy, wz);
+              scaleDummy.updateMatrix();
+              mesh.setMatrixAt(i, scaleDummy.matrix);
+              scaleDummy.scale.set(0, 0, 0);
+              scaleDummy.updateMatrix();
+              waterMesh.setMatrixAt(i, scaleDummy.matrix);
             }
             i++;
           }
@@ -356,18 +381,12 @@
       waterMesh.instanceColor = new THREE.InstancedBufferAttribute(waterColArr, 3);
       scene.add(mesh);
       scene.add(waterMesh);
-      c = {
-        mesh, waterMesh, states, nx, ny, nz, sx, sy, sz,
-        center: new THREE.Vector3(
-          (sx + ex - 1) / 2 - halfX + 0.5,
-          (sy + ey - 1) / 2 + 0.5,
-          (sz + ez - 1) / 2 - halfZ + 0.5
-        ),
-        isFar: false
-      };
-      loadedChunks.set(key, c);
-      visibleMeshes.push(mesh);
-      visibleMeshes.push(waterMesh);
+      c.mesh = mesh;
+      c.waterMesh = waterMesh;
+    }
+    function ensureChunkSync(cx, cz, cy) {
+      const c = ensureChunk(cx, cz, cy);
+      if (c && !c.mesh) buildChunkMesh(c.key);
       return c;
     }
     function chunkLocalIdx(c, bx, bz, by) {
@@ -423,7 +442,7 @@
     for (let cx = startCX - initR; cx <= startCX + initR; cx++) {
       for (let cz = startCZ - initR; cz <= startCZ + initR; cz++) {
         for (let cy = Math.max(0, startCY - 1); cy <= Math.min(chY - 1, startCY + 1); cy++) {
-          if (cx >= 0 && cz >= 0 && cy >= 0 && cy < chY) ensureChunk(cx, cz, cy);
+          if (cx >= 0 && cz >= 0 && cy >= 0 && cy < chY) ensureChunkSync(cx, cz, cy);
         }
       }
     }
@@ -591,7 +610,7 @@
       const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
       if ((px-0.4) < (bx-halfX+1) && (px+0.4) > (bx-halfX) && (py-0.45) < (by+1) && (py+0.45) > by && (pz-0.05) < (bz-halfZ+1) && (pz+0.05) > (bz-halfZ)) return;
       const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(by / CHUNK);
-      const pChunk = ensureChunk(cxc, czc, cyc);
+      const pChunk = ensureChunkSync(cxc, czc, cyc);
       const pId = chunkLocalIdx(pChunk, bx, bz, by);
       if (pChunk.states[pId] !== 0) return;
       if (isWater) {
@@ -783,15 +802,17 @@
       }
     });
 
-    const sensSlider = document.getElementById('sensSlider');
-    const sensValue = document.getElementById('sensValue');
-    if (sensSlider) {
-      sensSlider.addEventListener('input', () => { if (sensValue) sensValue.textContent = sensSlider.value; });
-      sensSlider.addEventListener('change', () => { if (sensValue) sensValue.textContent = sensSlider.value; });
+    let sensitivity = 5;
+    const sensSliderEl = document.getElementById('sensSlider');
+    const sensValueEl = document.getElementById('sensValue');
+    if (sensSliderEl) {
+      const update = () => { sensitivity = parseFloat(sensSliderEl.value); if (sensValueEl) sensValueEl.textContent = sensSliderEl.value; };
+      sensSliderEl.addEventListener('input', update);
+      sensSliderEl.addEventListener('change', update);
     }
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== renderer.domElement) return;
-      const s = parseFloat(sensSlider ? sensSlider.value : 5) * 0.0004;
+      const s = sensitivity * 0.0004;
       yaw -= e.movementX * s;
       pitch -= e.movementY * s;
       const pitchLimit = thirdPerson ? Math.PI/4 : Math.PI/2;
@@ -1119,6 +1140,12 @@
         fpsEl.textContent = Math.round(fpsFrames / fpsTime) + ' FPS';
         fpsFrames = 0;
         fpsTime = 0;
+      }
+
+      const budget = 4;
+      const t0 = performance.now();
+      while (chunkBuildQueue.length > 0 && performance.now() - t0 < budget) {
+        buildChunkMesh(chunkBuildQueue.shift());
       }
 
       playerBody.quaternion.setFromEuler(new THREE.Euler(0, yaw, 0));
@@ -1530,14 +1557,15 @@
           const parts = key.split(',');
           const cx = parseInt(parts[0]), cz = parseInt(parts[1]), cy = parseInt(parts[2]);
           if (Math.abs(cx - pCX) > unloadR || Math.abs(cz - pCZ) > unloadR || Math.abs(cy - pCY) > 2) {
-            scene.remove(c.mesh);
-            scene.remove(c.waterMesh);
+            if (c.mesh) scene.remove(c.mesh);
+            if (c.waterMesh) scene.remove(c.waterMesh);
             loadedChunks.delete(key);
           }
         }
         visibleMeshes.length = 0;
         const rd2c = (renderDist + CHUNK) * (renderDist + CHUNK);
         for (const c of loadedChunks.values()) {
+          if (!c.mesh) continue;
           const dx = c.center.x - playerBody.position.x;
           const dy = c.center.y - playerBody.position.y;
           const dz = c.center.z - playerBody.position.z;

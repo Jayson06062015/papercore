@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Papercore 3D - Main Menu</title>
+  <title>Papercore - Main Menu</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
     body { margin:0; font-family:"Poppins",sans-serif; overflow:hidden; background:linear-gradient(135deg,#e0e0e0,#ffffff); background-attachment:fixed; }
@@ -17,13 +17,13 @@
 </head>
 <body>
   <div id="menu">
-    <h1>PAPERCORE 3D</h1>
+    <h1>PAPERCORE</h1>
     <button class="btn" onclick="window.location.href='game.html?mode=new'">NEW GAME</button>
     <button class="btn" id="loadBtn" onclick="window.location.href='game.html?mode=load'">LOAD GAME</button>
     <button class="btn" onclick="window.location.href='updates.html'">UPDATE LOG</button>
   </div>
   <script>
-    if(localStorage.getItem('papercore3d_save_v1') === null) {
+    if(localStorage.getItem('papercore_save_v1') === null) {
       document.getElementById('loadBtn').title = "No save file found. Save in-game first.";
     }
   </script>

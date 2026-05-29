@@ -70,6 +70,11 @@
     #pause-overlay h2 { margin:0 0 20px; font-size:28px; color:#4c1d95; font-weight:900; }
     #pause-overlay button { display:block; width:200px; margin:10px auto; padding:12px 20px; font-size:16px; font-weight:700; border:2px solid #6d28d9; border-radius:8px; background:#8b5cf6; color:#fff; cursor:pointer; font-family:"Poppins",sans-serif; }
     #pause-overlay button:hover { background:#7c3aed; }
+    #death-overlay { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; }
+    #death-overlay .death-window { background:linear-gradient(135deg,#1e1b4b,#0f0d2e); border:3px solid #991b1b; border-radius:16px; padding:40px; text-align:center; box-shadow:0 0 60px rgba(153,27,27,0.4); }
+    #death-overlay h2 { margin:0 0 20px; font-size:36px; color:#ef4444; font-weight:900; text-shadow:0 0 20px rgba(239,68,68,0.5); }
+    #death-overlay button { display:block; width:200px; margin:10px auto; padding:12px 20px; font-size:16px; font-weight:700; border:2px solid #6d28d9; border-radius:8px; background:#8b5cf6; color:#fff; cursor:pointer; font-family:"Poppins",sans-serif; }
+    #death-overlay button:hover { background:#7c3aed; }
   </style>
 </head>
 <body>
@@ -133,6 +138,14 @@
       </div>
       <button id="btn-resume">RESUME</button>
       <button id="btn-back-menu">BACK TO MENU</button>
+    </div>
+  </div>
+
+  <div id="death-overlay">
+    <div class="death-window">
+      <h2>YOU DIED</h2>
+      <button id="btn-respawn">RESPAWN</button>
+      <button id="btn-death-menu">BACK TO MENU</button>
     </div>
   </div>
 
@@ -681,6 +694,45 @@
     const maxHealth = 20;
     let fallStartY = 0;
     let sens = 0.002;
+    let isDead = false;
+    const startPos = new THREE.Vector3(0, terrainHeight(Math.floor(gridX / 2), Math.floor(gridZ / 2)) + PH / 2 + 1, 0);
+
+    function updateHealthDisplay() {
+      const hpPct = playerHealth / maxHealth * 100;
+      const fill = document.getElementById('hpFill');
+      const text = document.getElementById('hpText');
+      if (fill) {
+        fill.style.width = hpPct + '%';
+        fill.style.background = hpPct > 50 ? 'linear-gradient(90deg,#22c55e,#16a34a)' : hpPct > 25 ? 'linear-gradient(90deg,#eab308,#ca8a04)' : 'linear-gradient(90deg,#ef4444,#dc2626)';
+      }
+      if (text) text.textContent = playerHealth + '/' + maxHealth;
+    }
+    function die() {
+      isDead = true;
+      document.getElementById('death-overlay').style.display = 'flex';
+      document.getElementById('crosshair').style.display = 'none';
+      document.getElementById('health-bar').style.display = 'none';
+      document.getElementById('inventory').style.display = 'none';
+      document.getElementById('crafting').style.display = 'none';
+      if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+    }
+    function respawn() {
+      isDead = false;
+      playerHealth = maxHealth;
+      updateHealthDisplay();
+      playerBody.position.copy(startPos);
+      velocity.set(0, 0, 0);
+      onGround = true;
+      yaw = 0; pitch = 0;
+      document.getElementById('death-overlay').style.display = 'none';
+      document.getElementById('crosshair').style.display = 'block';
+      document.getElementById('health-bar').style.display = 'flex';
+      document.getElementById('inventory').style.display = 'flex';
+      isPaused = false;
+      if (!isTouch && document.pointerLockElement !== renderer.domElement) {
+        renderer.domElement.requestPointerLock();
+      }
+    }
     let thirdPerson = false;
     let isCrafting = false;
     let isBreaking = false;
@@ -772,13 +824,18 @@
         fpsEl.style.display = 'none';
         document.getElementById('health-bar').style.display = 'flex';
         document.getElementById('inventory').style.display = 'flex';
-      } else if (gameStarted) {
+      } else if (gameStarted && !isDead) {
         isPaused = true;
         pauseOverlay.style.display = 'flex';
         blocker.style.display = 'none';
         document.getElementById('crosshair').style.display = 'none';
         fpsEl.style.display = 'none';
         document.getElementById('health-bar').style.display = 'none';
+        document.getElementById('inventory').style.display = 'none';
+      } else if (gameStarted && isDead) {
+        blocker.style.display = 'none';
+        pauseOverlay.style.display = 'none';
+        fpsEl.style.display = 'none';
         document.getElementById('inventory').style.display = 'none';
       } else {
         blocker.style.display = 'flex';
@@ -792,10 +849,12 @@
     const sensSlider = document.getElementById('sensSlider');
     const sensValue = document.getElementById('sensValue');
     if (sensSlider) {
-      sensSlider.addEventListener('input', () => {
+      function updateSensitivity() {
         sens = parseInt(sensSlider.value) * 0.0004;
-        sensValue.textContent = sensSlider.value;
-      });
+        if (sensValue) sensValue.textContent = sensSlider.value;
+      }
+      sensSlider.addEventListener('input', updateSensitivity);
+      sensSlider.addEventListener('change', updateSensitivity);
     }
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== renderer.domElement) return;
@@ -932,6 +991,20 @@
     document.getElementById('btn-back-menu').addEventListener('touchstart', (e) => {
       e.preventDefault();
       window.location.href = 'index.html';
+      window.location.href = 'index.html';
+    }, { passive: false });
+
+    document.getElementById('btn-respawn').addEventListener('click', respawn);
+    document.getElementById('btn-death-menu').addEventListener('click', () => {
+      if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+      window.location.href = 'index.html';
+    });
+    document.getElementById('btn-respawn').addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      respawn();
+    }, { passive: false });
+    document.getElementById('btn-death-menu').addEventListener('touchstart', (e) => {
+      e.preventDefault();
       window.location.href = 'index.html';
     }, { passive: false });
 
@@ -1116,7 +1189,7 @@
 
       playerBody.quaternion.setFromEuler(new THREE.Euler(0, yaw, 0));
 
-      if (isPaused) { renderer.render(scene, camera); return; }
+      if (isPaused || isDead) { renderer.render(scene, camera); return; }
 
       if (thirdPerson) {
         const dist = 4;
@@ -1290,10 +1363,11 @@
         if (fallDist >= 5) {
           const dmg = Math.floor(fallDist - 5) + 1;
           playerHealth = Math.max(0, playerHealth - dmg);
-          const hpPct = playerHealth / maxHealth * 100;
-          document.getElementById('hpFill').style.width = hpPct + '%';
-          document.getElementById('hpFill').style.background = hpPct > 50 ? 'linear-gradient(90deg,#22c55e,#16a34a)' : hpPct > 25 ? 'linear-gradient(90deg,#eab308,#ca8a04)' : 'linear-gradient(90deg,#ef4444,#dc2626)';
-          document.getElementById('hpText').textContent = playerHealth + '/' + maxHealth;
+          updateHealthDisplay();
+          if (playerHealth <= 0) {
+            isPaused = true;
+            die();
+          }
         }
       }
 

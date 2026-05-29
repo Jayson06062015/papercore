@@ -169,9 +169,9 @@
 
     const isMobile = 'ontouchstart' in window;
     const wsParts = (document.getElementById('wsInput').value || '200-100-200').split('-').map(Number);
-    const gridX = Math.max(20, wsParts[0] || 200);
-    const gridZ = Math.max(20, wsParts[2] || wsParts[0] || 200);
-    const gridY = Math.max(10, wsParts[1] || 100);
+    const gridX = Math.max(20, Math.min(wsParts[0] || 200, 2000));
+    const gridZ = Math.max(20, Math.min(wsParts[2] || wsParts[0] || 200, 2000));
+    const gridY = Math.max(10, Math.min(wsParts[1] || 100, 200));
     const halfX = gridX / 2, halfZ = gridZ / 2;
     let renderDist = isMobile ? 12 : 20;
     const scene = new THREE.Scene();

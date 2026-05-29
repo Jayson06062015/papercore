@@ -243,6 +243,9 @@
     const blockTex = new THREE.TextureLoader().load('./Paper Block.png');
     blockTex.encoding = THREE.sRGBEncoding;
     const blockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: blockTex, roughness: 0.8 });
+    const waterTex = new THREE.TextureLoader().load('./Water Ball.png');
+    waterTex.encoding = THREE.sRGBEncoding;
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterTex, roughness: 0.2, transparent: true, opacity: 0.85 });
     const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
     const mx = new THREE.Matrix4();
     const scaleDummy = new THREE.Object3D();
@@ -266,7 +269,9 @@
           if (!hasSolid) continue;
           const count = nx * nz * ny;
           const mesh = new THREE.InstancedMesh(cubeGeo, blockMat, count);
+          const waterMesh = new THREE.InstancedMesh(cubeGeo, waterMat, count);
           mesh.receiveShadow = true; mesh.castShadow = true;
+          waterMesh.receiveShadow = true; waterMesh.castShadow = true;
           const states = new Uint8Array(count);
           let i = 0;
           for (let x = sx; x < ex; x++) {
@@ -275,29 +280,53 @@
               for (let y = sy; y < ey; y++) {
                 const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
                 if (y >= h) {
-                  states[i] = 1;
+                  states[i] = 0;
                   scaleDummy.scale.set(0, 0, 0);
                   scaleDummy.position.set(wx, wy, wz);
                   scaleDummy.updateMatrix();
                   mesh.setMatrixAt(i, scaleDummy.matrix);
+                  waterMesh.setMatrixAt(i, scaleDummy.matrix);
                 } else {
-                  mx.identity().setPosition(wx, wy, wz);
-                  mesh.setMatrixAt(i, mx);
+                  if (Math.random() < 0.05) {
+                    states[i] = 2;
+                    scaleDummy.scale.set(1, 1, 1);
+                    scaleDummy.position.set(wx, wy, wz);
+                    scaleDummy.updateMatrix();
+                    waterMesh.setMatrixAt(i, scaleDummy.matrix);
+                    scaleDummy.scale.set(0, 0, 0);
+                    scaleDummy.updateMatrix();
+                    mesh.setMatrixAt(i, scaleDummy.matrix);
+                  } else {
+                    states[i] = 1;
+                    scaleDummy.scale.set(1, 1, 1);
+                    scaleDummy.position.set(wx, wy, wz);
+                    scaleDummy.updateMatrix();
+                    mesh.setMatrixAt(i, scaleDummy.matrix);
+                    scaleDummy.scale.set(0, 0, 0);
+                    scaleDummy.updateMatrix();
+                    waterMesh.setMatrixAt(i, scaleDummy.matrix);
+                  }
                 }
                 i++;
               }
             }
           }
           mesh.instanceMatrix.needsUpdate = true;
+          waterMesh.instanceMatrix.needsUpdate = true;
           const colArr = new Float32Array(count * 3);
-          for (let ci = 0; ci < count; ci++) { colArr[ci * 3] = 1; colArr[ci * 3 + 1] = 1; colArr[ci * 3 + 2] = 1; }
+          const waterColArr = new Float32Array(count * 3);
+          for (let ci = 0; ci < count; ci++) { colArr[ci * 3] = 1; colArr[ci * 3 + 1] = 1; colArr[ci * 3 + 2] = 1; waterColArr[ci * 3] = 1; waterColArr[ci * 3 + 1] = 1; waterColArr[ci * 3 + 2] = 1; }
           mesh.instanceColor = new THREE.InstancedBufferAttribute(colArr, 3);
+          waterMesh.instanceColor = new THREE.InstancedBufferAttribute(waterColArr, 3);
           scene.add(mesh);
+          scene.add(waterMesh);
           allChunkMeshes.push(mesh);
+          allChunkMeshes.push(waterMesh);
           visibleMeshes.push(mesh);
+          visibleMeshes.push(waterMesh);
           const cIdx = ((cx * chZ + cz) * chY) + cy;
           chunks[cIdx] = {
-            mesh, states, nx, ny, nz, sx, sy, sz,
+            mesh, waterMesh, states, nx, ny, nz, sx, sy, sz,
             center: new THREE.Vector3(
               (sx + ex - 1) / 2 - halfX + 0.5,
               (sy + ey - 1) / 2 + 0.5,
@@ -318,36 +347,61 @@
       const nx = ex - sx, nz = ez - sz, ny = ey - sy;
       const count = nx * nz * ny;
       const mesh = new THREE.InstancedMesh(cubeGeo, blockMat, count);
+      const waterMesh = new THREE.InstancedMesh(cubeGeo, waterMat, count);
+      mesh.receiveShadow = true; mesh.castShadow = true;
+      waterMesh.receiveShadow = true; waterMesh.castShadow = true;
       const states = new Uint8Array(count);
       let i = 0;
       for (let x = sx; x < ex; x++) {
         for (let z = sz; z < ez; z++) {
           const h = terrainHeight(x, z);
           for (let y = sy; y < ey; y++) {
+            const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
             if (y >= h) {
-              states[i] = 1;
-              const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
+              states[i] = 0;
               scaleDummy.scale.set(0, 0, 0);
               scaleDummy.position.set(wx, wy, wz);
               scaleDummy.updateMatrix();
               mesh.setMatrixAt(i, scaleDummy.matrix);
+              waterMesh.setMatrixAt(i, scaleDummy.matrix);
             } else {
-              const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
-              mx.identity().setPosition(wx, wy, wz);
-              mesh.setMatrixAt(i, mx);
+              if (Math.random() < 0.05) {
+                states[i] = 2;
+                scaleDummy.scale.set(1, 1, 1);
+                scaleDummy.position.set(wx, wy, wz);
+                scaleDummy.updateMatrix();
+                waterMesh.setMatrixAt(i, scaleDummy.matrix);
+                scaleDummy.scale.set(0, 0, 0);
+                scaleDummy.updateMatrix();
+                mesh.setMatrixAt(i, scaleDummy.matrix);
+              } else {
+                states[i] = 1;
+                scaleDummy.scale.set(1, 1, 1);
+                scaleDummy.position.set(wx, wy, wz);
+                scaleDummy.updateMatrix();
+                mesh.setMatrixAt(i, scaleDummy.matrix);
+                scaleDummy.scale.set(0, 0, 0);
+                scaleDummy.updateMatrix();
+                waterMesh.setMatrixAt(i, scaleDummy.matrix);
+              }
             }
             i++;
           }
         }
       }
       mesh.instanceMatrix.needsUpdate = true;
+      waterMesh.instanceMatrix.needsUpdate = true;
       const colArr = new Float32Array(count * 3);
-      for (let ci = 0; ci < count; ci++) { colArr[ci * 3] = 1; colArr[ci * 3 + 1] = 1; colArr[ci * 3 + 2] = 1; }
+      const waterColArr = new Float32Array(count * 3);
+      for (let ci = 0; ci < count; ci++) { colArr[ci * 3] = 1; colArr[ci * 3 + 1] = 1; colArr[ci * 3 + 2] = 1; waterColArr[ci * 3] = 1; waterColArr[ci * 3 + 1] = 1; waterColArr[ci * 3 + 2] = 1; }
       mesh.instanceColor = new THREE.InstancedBufferAttribute(colArr, 3);
+      waterMesh.instanceColor = new THREE.InstancedBufferAttribute(waterColArr, 3);
       scene.add(mesh);
+      scene.add(waterMesh);
       allChunkMeshes.push(mesh);
+      allChunkMeshes.push(waterMesh);
       c = {
-        mesh, states, nx, ny, nz, sx, sy, sz,
+        mesh, waterMesh, states, nx, ny, nz, sx, sy, sz,
         center: new THREE.Vector3(
           (sx + ex - 1) / 2 - halfX + 0.5,
           (sy + ey - 1) / 2 + 0.5,
@@ -357,6 +411,7 @@
       };
       chunks[idx] = c;
       visibleMeshes.push(mesh);
+      visibleMeshes.push(waterMesh);
       return c;
     }
     function chunkLocalIdx(c, bx, bz, by) {
@@ -402,7 +457,7 @@
       const ch = getChunk(cxc, czc, cyc);
       if (!ch) return false;
       const id = chunkLocalIdx(ch, bx, bz, by);
-      return id >= 0 && id < ch.states.length && ch.states[id] === 0;
+      return id >= 0 && id < ch.states.length && ch.states[id] !== 0;
     }
 
     function playerCollidesAt(px, py, pz) {
@@ -425,27 +480,48 @@
 
     function breakBlock(chunk, localId) {
       const bp = idxToWorldPos(chunk, localId);
-      chunk.states[localId] = 1;
+      const wasWater = chunk.states[localId] === 2;
+      chunk.states[localId] = 0;
       chunk.mesh.setColorAt(localId, white);
       chunk.mesh.instanceColor.needsUpdate = true;
+      chunk.waterMesh.setColorAt(localId, white);
+      chunk.waterMesh.instanceColor.needsUpdate = true;
       scrapDummy.scale.set(0, 0, 0);
       scrapDummy.position.set(bp.x, bp.y, bp.z);
       scrapDummy.updateMatrix();
       chunk.mesh.setMatrixAt(localId, scrapDummy.matrix);
       chunk.mesh.instanceMatrix.needsUpdate = true;
+      chunk.waterMesh.setMatrixAt(localId, scrapDummy.matrix);
+      chunk.waterMesh.instanceMatrix.needsUpdate = true;
 
-      const scrapCount = 5 + Math.floor(Math.random() * 3);
-      for (let s = 0; s < scrapCount; s++) {
-        const poolIdx = scrapItems.length + s;
-        if (poolIdx >= POOL_SIZE) break;
-        const mesh = scrapPool[poolIdx];
-        mesh.position.set(
-          bp.x + (Math.random() - 0.5) * 0.6,
-          bp.y + 0.5,
-          bp.z + (Math.random() - 0.5) * 0.6
-        );
-        mesh.visible = true;
-        scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0 });
+      if (wasWater) {
+        const dropCount = 1 + Math.floor(Math.random() * 3);
+        for (let s = 0; s < dropCount; s++) {
+          const poolIdx = scrapItems.length + s;
+          if (poolIdx >= POOL_SIZE) break;
+          const mesh = scrapPool[poolIdx];
+          mesh.position.set(
+            bp.x + (Math.random() - 0.5) * 0.6,
+            bp.y + 0.5,
+            bp.z + (Math.random() - 0.5) * 0.6
+          );
+          mesh.visible = true;
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'waterball' });
+        }
+      } else {
+        const scrapCount = 5 + Math.floor(Math.random() * 3);
+        for (let s = 0; s < scrapCount; s++) {
+          const poolIdx = scrapItems.length + s;
+          if (poolIdx >= POOL_SIZE) break;
+          const mesh = scrapPool[poolIdx];
+          mesh.position.set(
+            bp.x + (Math.random() - 0.5) * 0.6,
+            bp.y + 0.5,
+            bp.z + (Math.random() - 0.5) * 0.6
+          );
+          mesh.visible = true;
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'scrap' });
+        }
       }
     }
 
@@ -460,13 +536,19 @@
 
     function resetBreak() {
       if (breakChunk && breakId >= 0) {
-        breakChunk.mesh.setColorAt(breakId, white);
-        breakChunk.mesh.instanceColor.needsUpdate = true;
+        if (breakMesh) {
+          breakMesh.setColorAt(breakId, white);
+          breakMesh.instanceColor.needsUpdate = true;
+        } else {
+          breakChunk.mesh.setColorAt(breakId, white);
+          breakChunk.mesh.instanceColor.needsUpdate = true;
+        }
       }
       isBreaking = false;
       breakProgress = 0;
       breakChunk = null;
       breakId = -1;
+      breakMesh = null;
     }
 
     renderer.domElement.addEventListener('mousedown', (e) => {
@@ -479,11 +561,15 @@
     });
     function tryPlaceBlock() {
       const sel = inventory[selectedSlot];
-      if (!sel || sel.type !== 'paper_block' || sel.count <= 0) return;
+      if (!sel || sel.count <= 0) return;
+      const isWater = sel.type === 'water_block';
+      const isPaper = sel.type === 'paper_block';
+      if (!isPaper && !isWater) return;
       raycaster.setFromCamera({ x: 0, y: 0 }, camera);
       const hits = raycaster.intersectObjects(visibleMeshes);
       if (!hits.length) return;
-      const chunk = chunks.find(c => c && c.mesh === hits[0].object);
+      const hitObj = hits[0].object;
+      const chunk = chunks.find(c => c && (c.mesh === hitObj || c.waterMesh === hitObj));
       if (!chunk) return;
       const hi = hits[0].instanceId;
       const bp = idxToWorldPos(chunk, hi);
@@ -499,14 +585,31 @@
       const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(by / CHUNK);
       const pChunk = ensureChunk(cxc, czc, cyc);
       const pId = chunkLocalIdx(pChunk, bx, bz, by);
-      if (pChunk.states[pId] === 0) return;
-      removeItems('paper_block', 1);
-      pChunk.states[pId] = 0;
-      scaleDummy.scale.set(1, 1, 1);
-      scaleDummy.position.set(bx - halfX + 0.5, by + 0.5, bz - halfZ + 0.5);
-      scaleDummy.updateMatrix();
-      pChunk.mesh.setMatrixAt(pId, scaleDummy.matrix);
-      pChunk.mesh.instanceMatrix.needsUpdate = true;
+      if (pChunk.states[pId] !== 1) return;
+      if (isWater) {
+        removeItems('water_block', 1);
+        pChunk.states[pId] = 2;
+        scaleDummy.scale.set(0, 0, 0);
+        scaleDummy.position.set(bx - halfX + 0.5, by + 0.5, bz - halfZ + 0.5);
+        scaleDummy.updateMatrix();
+        pChunk.mesh.setMatrixAt(pId, scaleDummy.matrix);
+        scaleDummy.scale.set(1, 1, 1);
+        scaleDummy.updateMatrix();
+        pChunk.waterMesh.setMatrixAt(pId, scaleDummy.matrix);
+        pChunk.waterMesh.instanceMatrix.needsUpdate = true;
+      } else {
+        removeItems('paper_block', 1);
+        pChunk.states[pId] = 1;
+        scaleDummy.scale.set(1, 1, 1);
+        scaleDummy.position.set(bx - halfX + 0.5, by + 0.5, bz - halfZ + 0.5);
+        scaleDummy.updateMatrix();
+        pChunk.mesh.setMatrixAt(pId, scaleDummy.matrix);
+        pChunk.mesh.instanceMatrix.needsUpdate = true;
+        scaleDummy.scale.set(0, 0, 0);
+        scaleDummy.updateMatrix();
+        pChunk.waterMesh.setMatrixAt(pId, scaleDummy.matrix);
+        pChunk.waterMesh.instanceMatrix.needsUpdate = true;
+      }
     }
     renderer.domElement.addEventListener('mousedown', (e) => {
       if (e.button === 2 && document.pointerLockElement === renderer.domElement) tryPlaceBlock();
@@ -526,6 +629,8 @@
     let breakChunk = null;
     let breakId = -1;
     let breakNeedsTarget = false;
+    let breakDuration = 1;
+    let breakMesh = null;
     let velX = 0, velZ = 0;
     const white = new THREE.Color(0xffffff);
     const black = new THREE.Color(0x000000);
@@ -784,7 +889,8 @@
       plastic:'./Plastic Piece.png', glue:'./Glue.png',
       attachable:'./Attachable Paper Scrap.png', cartolina:'./Cartolina Scrap.png',
       shield:'./Paper Shield.png', reinforced_shield:'./Reinforced Paper Shield.png',
-      paper_block:'./Paper Block.png', reinforced_block:'./Reinforced Paper Block.png'
+      paper_block:'./Paper Block.png', reinforced_block:'./Reinforced Paper Block.png',
+      waterball:'./Water Ball.png', water_block:'./Water Ball.png'
     };
 
     function updateSlot(i) {
@@ -851,6 +957,7 @@
 
     const recipes = [
       { id: 'paper_block', name: 'Paper Block', result: 'paper_block', resultImg: './Paper Block.png', ingredients: [{ type: 'scrap', count: 8, img: './Paper Scrap.png' }] },
+      { id: 'water_block', name: 'Water Block', result: 'water_block', resultImg: './Water Ball.png', ingredients: [{ type: 'waterball', count: 4, img: './Water Ball.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');
@@ -1062,7 +1169,7 @@
             const blockTop = blockY + 1;
             if (blockTop > playerBody.position.y) continue;
             const localId = chunkLocalIdx(chunk, bx, bz, blockY);
-            if (localId >= 0 && localId < chunk.states.length && chunk.states[localId] === 0) {
+            if (localId >= 0 && localId < chunk.states.length && chunk.states[localId] !== 0) {
               groundBlockY = blockY;
               break;
             }
@@ -1131,7 +1238,7 @@
                 const blockTop = blockY + 1;
                 if (blockTop > prevY) continue;
                 const localId = chunkLocalIdx(chunk, sbx, sbz, blockY);
-                if (localId >= 0 && localId < chunk.states.length && chunk.states[localId] === 0) {
+                if (localId >= 0 && localId < chunk.states.length && chunk.states[localId] !== 0) {
                   groundY = blockY;
                   break;
                 }
@@ -1164,7 +1271,7 @@
           s.pickupTimer += dt;
           if (s.pickupTimer >= 0.7) {
             s.mesh.visible = false;
-            addToInventory('scrap');
+            addToInventory(s.itemType || 'scrap');
             scrapItems.splice(i, 1);
           }
         } else {
@@ -1178,13 +1285,22 @@
           raycaster.setFromCamera({ x: 0, y: 0 }, camera);
           const hits = raycaster.intersectObjects(visibleMeshes);
           if (hits.length) {
-            const chunk = chunks.find(c => c && c.mesh === hits[0].object);
+            const hitObj = hits[0].object;
+            const chunk = chunks.find(c => c && (c.mesh === hitObj || c.waterMesh === hitObj));
             if (chunk) {
               const hid = hits[0].instanceId;
-              if (chunk.states[hid] === 0 && distToBlock(chunk, hid) <= 5) {
+              if (chunk.states[hid] === 1 && distToBlock(chunk, hid) <= 5) {
                 breakChunk = chunk;
                 breakId = hid;
                 breakProgress = 0;
+                breakDuration = 1;
+                breakMesh = chunk.mesh;
+              } else if (chunk.states[hid] === 2 && distToBlock(chunk, hid) <= 5) {
+                breakChunk = chunk;
+                breakId = hid;
+                breakProgress = 0;
+                breakDuration = 2;
+                breakMesh = chunk.waterMesh;
               }
             }
           }
@@ -1195,13 +1311,15 @@
             breakNeedsTarget = true;
           } else {
             breakProgress += dt;
-            const t = Math.min(breakProgress, 1);
+            const t = Math.min(breakProgress / breakDuration, 1);
             const color = new THREE.Color().lerpColors(white, black, t);
-            breakChunk.mesh.setColorAt(breakId, color);
-            breakChunk.mesh.instanceColor.needsUpdate = true;
-            if (breakProgress >= 1) {
+            const targetMesh = breakMesh || breakChunk.mesh;
+            targetMesh.setColorAt(breakId, color);
+            targetMesh.instanceColor.needsUpdate = true;
+            if (breakProgress >= breakDuration) {
               breakBlock(breakChunk, breakId);
               breakChunk = null; breakId = -1; breakProgress = 0;
+              breakMesh = null;
               breakNeedsTarget = true;
             }
           }
@@ -1220,11 +1338,17 @@
           if (far !== c.isFar) {
             c.isFar = far;
             c.mesh.visible = !far;
+            if (c.waterMesh) c.waterMesh.visible = !far;
             if (far) {
               const vi = visibleMeshes.indexOf(c.mesh);
               if (vi >= 0) visibleMeshes.splice(vi, 1);
+              if (c.waterMesh) {
+                const wi = visibleMeshes.indexOf(c.waterMesh);
+                if (wi >= 0) visibleMeshes.splice(wi, 1);
+              }
             } else {
               visibleMeshes.push(c.mesh);
+              if (c.waterMesh) visibleMeshes.push(c.waterMesh);
             }
           }
         }

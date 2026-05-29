@@ -25,7 +25,7 @@
     #health-bar .hp-icon { font-size:20px; color:#ef4444; text-shadow:0 0 4px rgba(0,0,0,0.5); }
     #health-bar .hp-text { color:#fff; font-size:16px; font-weight:700; text-shadow:0 0 4px rgba(0,0,0,0.7); min-width:40px; text-align:center; font-family:"Poppins",sans-serif; }
     #health-bar .hp-bg { width:120px; height:12px; background:rgba(0,0,0,0.4); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.2); }
-    #health-bar .hp-fill { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:6px; transition:width 0.2s; }
+    #health-bar .hp-fill { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:6px; }
     #inventory { position:fixed; bottom:15px; left:50%; transform:translateX(-50%); display:none; gap:6px; z-index:20; }
     #crafting { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:30; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
     #crafting .window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:24px; min-width:340px; box-shadow:0 0 40px rgba(139,92,246,0.3); }
@@ -242,7 +242,7 @@
     fill.position.set(-10, 15, -10);
     scene.add(fill);
 
-    const floorGeo = new THREE.PlaneGeometry(gridX + 20, gridZ + 20);
+    const floorGeo = new THREE.PlaneGeometry(100000, 100000);
     const floorMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.8, metalness: 0.0 });
     const floor = new THREE.Mesh(floorGeo, floorMat);
     floor.rotation.x = -Math.PI/2;
@@ -301,8 +301,8 @@
       let c = loadedChunks.get(key);
       if (c) return c;
       const sx = cx * CHUNK, sz = cz * CHUNK, sy = cy * CHUNK;
-      const ex = Math.min(sx + CHUNK, gridX), ez = Math.min(sz + CHUNK, gridZ), ey = Math.min(sy + CHUNK, gridY);
-      const nx = ex - sx, nz = ez - sz, ny = ey - sy;
+      const ex = sx + CHUNK, ez = sz + CHUNK, ey = Math.min(sy + CHUNK, gridY);
+      const nx = CHUNK, nz = CHUNK, ny = ey - sy;
       const count = nx * nz * ny;
       const mesh = new THREE.InstancedMesh(cubeGeo, blockMat, count);
       const waterMesh = new THREE.InstancedMesh(cubeGeo, waterMat, count);
@@ -423,7 +423,7 @@
     for (let cx = startCX - initR; cx <= startCX + initR; cx++) {
       for (let cz = startCZ - initR; cz <= startCZ + initR; cz++) {
         for (let cy = Math.max(0, startCY - 1); cy <= Math.min(chY - 1, startCY + 1); cy++) {
-          if (cx >= 0 && cx < chX && cz >= 0 && cz < chZ) ensureChunk(cx, cz, cy);
+          if (cx >= 0 && cz >= 0 && cy >= 0 && cy < chY) ensureChunk(cx, cz, cy);
         }
       }
     }
@@ -453,8 +453,9 @@
     }
 
     function isSolidBlock(bx, bz, by) {
-      if (bx < 0 || bx >= gridX || bz < 0 || bz >= gridZ || by < 0 || by >= gridY) return false;
+      if (by < 0 || by >= gridY) return false;
       const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(by / CHUNK);
+      if (cyc < 0 || cyc >= chY) return false;
       const ch = getChunk(cxc, czc, cyc);
       if (!ch) return false;
       const id = chunkLocalIdx(ch, bx, bz, by);
@@ -586,7 +587,7 @@
       const bx = Math.round(bp.x + halfX - 0.5) + nx;
       const by = Math.round(bp.y - 0.5) + ny;
       const bz = Math.round(bp.z + halfZ - 0.5) + nz;
-      if (bx < 0 || bx >= gridX || bz < 0 || bz >= gridZ || by < 0 || by >= gridY) return;
+      if (by < 0 || by >= gridY) return;
       const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
       if ((px-0.4) < (bx-halfX+1) && (px+0.4) > (bx-halfX) && (py-0.45) < (by+1) && (py+0.45) > by && (pz-0.05) < (bz-halfZ+1) && (pz+0.05) > (bz-halfZ)) return;
       const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(by / CHUNK);
@@ -630,7 +631,6 @@
     let playerHealth = 20;
     const maxHealth = 20;
     let fallStartY = 0;
-    let sens = 0.002;
     let isDead = false;
     const startPos = new THREE.Vector3(0, terrainHeight(Math.floor(gridX / 2), Math.floor(gridZ / 2)) + PH / 2 + 1, 0);
 
@@ -786,16 +786,12 @@
     const sensSlider = document.getElementById('sensSlider');
     const sensValue = document.getElementById('sensValue');
     if (sensSlider) {
-      function updateSensitivity() {
-        sens = parseInt(sensSlider.value) * 0.0004;
-        if (sensValue) sensValue.textContent = sensSlider.value;
-      }
-      sensSlider.addEventListener('input', updateSensitivity);
-      sensSlider.addEventListener('change', updateSensitivity);
+      sensSlider.addEventListener('input', () => { if (sensValue) sensValue.textContent = sensSlider.value; });
+      sensSlider.addEventListener('change', () => { if (sensValue) sensValue.textContent = sensSlider.value; });
     }
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== renderer.domElement) return;
-      const s = parseFloat(document.getElementById('sensSlider')?.value || 5) * 0.0004;
+      const s = parseFloat(sensSlider ? sensSlider.value : 5) * 0.0004;
       yaw -= e.movementX * s;
       pitch -= e.movementY * s;
       const pitchLimit = thirdPerson ? Math.PI/4 : Math.PI/2;
@@ -1236,48 +1232,38 @@
         }
       }
 
-      const bound = halfX - 1;
+      const bound = 1000000;
       playerBody.position.x = Math.max(-bound, Math.min(bound, playerBody.position.x));
       playerBody.position.z = Math.max(-bound, Math.min(bound, playerBody.position.z));
-
+    
       const wasOnGround = onGround;
       const bx = Math.floor(playerBody.position.x + halfX);
       const bz = Math.floor(playerBody.position.z + halfZ);
-      if (bx >= 0 && bx < gridX && bz >= 0 && bz < gridZ) {
-        let groundBlockY = -1;
-        const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK);
-        for (let cy = chY - 1; cy >= 0; cy--) {
-          const chunk = getChunk(cxc, czc, cy);
-          if (!chunk) continue;
-          for (let ly = chunk.ny - 1; ly >= 0; ly--) {
-            const blockY = chunk.sy + ly;
-            const blockTop = blockY + 1;
-            if (blockTop > playerBody.position.y) continue;
-            const localId = chunkLocalIdx(chunk, bx, bz, blockY);
-            if (localId >= 0 && localId < chunk.states.length && chunk.states[localId] !== 0) {
-              groundBlockY = blockY;
-              break;
-            }
+      let groundBlockY = -1;
+      const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK);
+      for (let cy = chY - 1; cy >= 0; cy--) {
+        const chunk = getChunk(cxc, czc, cy);
+        if (!chunk) continue;
+        for (let ly = chunk.ny - 1; ly >= 0; ly--) {
+          const blockY = chunk.sy + ly;
+          const blockTop = blockY + 1;
+          if (blockTop > playerBody.position.y) continue;
+          const localId = chunkLocalIdx(chunk, bx, bz, blockY);
+          if (localId >= 0 && localId < chunk.states.length && chunk.states[localId] !== 0) {
+            groundBlockY = blockY;
+            break;
           }
-          if (groundBlockY >= 0) break;
         }
-        if (groundBlockY >= 0) {
-          const snapY = groundBlockY + 1 + PH / 2;
-          if (playerBody.position.y <= snapY + 0.05 && velocity.y <= 0) {
-            playerBody.position.y = snapY;
-            velocity.y = 0;
-            onGround = true;
-          } else {
-            onGround = false;
-          }
+        if (groundBlockY >= 0) break;
+      }
+      if (groundBlockY >= 0) {
+        const snapY = groundBlockY + 1 + PH / 2;
+        if (playerBody.position.y <= snapY + 0.05 && velocity.y <= 0) {
+          playerBody.position.y = snapY;
+          velocity.y = 0;
+          onGround = true;
         } else {
-          if (playerBody.position.y <= PH / 2 - 0.01) {
-            playerBody.position.y = PH / 2 - 0.01;
-            velocity.y = 0;
-            onGround = true;
-          } else {
-            onGround = false;
-          }
+          onGround = false;
         }
       } else {
         if (playerBody.position.y <= PH / 2 - 0.01) {
@@ -1327,7 +1313,7 @@
           s.pos.y += s.velY * dt;
           const sbx = Math.floor(s.pos.x + halfX);
           const sbz = Math.floor(s.pos.z + halfZ);
-          if (sbx >= 0 && sbx < gridX && sbz >= 0 && sbz < gridZ) {
+          if (sbx >= 0 && sbz >= 0) {
             let groundY = -1;
             const cxc = Math.floor(sbx / CHUNK), czc = Math.floor(sbz / CHUNK);
             for (let cy = chY - 1; cy >= 0; cy--) {
@@ -1361,7 +1347,7 @@
           const sbx = Math.floor(s.pos.x + halfX);
           const sbz = Math.floor(s.pos.z + halfZ);
           const belowY = Math.floor(s.pos.y - 0.05);
-          if (sbx < 0 || sbx >= gridX || sbz < 0 || sbz >= gridZ || belowY < 0 || belowY >= gridY || !isSolidBlock(sbx, sbz, belowY)) {
+          if (sbx < 0 || sbz < 0 || belowY < 0 || belowY >= gridY || !isSolidBlock(sbx, sbz, belowY)) {
             s.onGround = false;
             s.velY = 0;
           }
@@ -1441,7 +1427,7 @@
         g.y += g.vy * dt;
         const gbx = Math.floor(g.x + halfX);
         const gbz = Math.floor(g.z + halfZ);
-        if (g.vy <= 0 && gbx >= 0 && gbx < gridX && gbz >= 0 && gbz < gridZ) {
+        if (g.vy <= 0 && gbx >= 0 && gbz >= 0) {
           let groundY = -1;
           const cxc = Math.floor(gbx / CHUNK), czc = Math.floor(gbz / CHUNK);
           for (let cy = chY - 1; cy >= 0; cy--) {
@@ -1536,7 +1522,7 @@
         for (let cx = pCX - loadR; cx <= pCX + loadR; cx++) {
           for (let cz = pCZ - loadR; cz <= pCZ + loadR; cz++) {
             for (let cy = Math.max(0, pCY - 1); cy <= Math.min(chY - 1, pCY + 1); cy++) {
-              if (cx >= 0 && cx < chX && cz >= 0 && cz < chZ) ensureChunk(cx, cz, cy);
+              if (cx >= 0 && cz >= 0 && cy >= 0 && cy < chY) ensureChunk(cx, cz, cy);
             }
           }
         }

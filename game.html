@@ -858,8 +858,9 @@
     }
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== renderer.domElement) return;
-      yaw -= e.movementX * sens;
-      pitch -= e.movementY * sens;
+      const s = parseFloat(document.getElementById('sensSlider')?.value || 5) * 0.0004;
+      yaw -= e.movementX * s;
+      pitch -= e.movementY * s;
       const pitchLimit = thirdPerson ? Math.PI/4 : Math.PI/2;
       pitch = Math.max(-pitchLimit, Math.min(pitchLimit, pitch));
     });

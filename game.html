@@ -21,6 +21,11 @@
     .setting input[type="text"] { width:120px; padding:6px 10px; font-size:14px; font-family:"Poppins",sans-serif; border:2px solid #c4b5fd; border-radius:6px; outline:none; text-align:center; background:white; }
     #fps { position:fixed; top:10px; right:10px; color:#fff; font-size:15px; font-weight:700; pointer-events:none; z-index:5; text-shadow:0 0 4px rgba(0,0,0,0.7); display:none; user-select:none; font-family:"Poppins",sans-serif; }
     #crosshair { position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); color:#fff; font-size:28px; font-weight:700; pointer-events:none; z-index:5; text-shadow:0 0 3px rgba(0,0,0,0.6); display:none; user-select:none; }
+    #health-bar { position:fixed; bottom:14%; left:50%; transform:translateX(-50%); z-index:5; display:none; align-items:center; gap:8px; user-select:none; pointer-events:none; }
+    #health-bar .hp-icon { font-size:20px; color:#ef4444; text-shadow:0 0 4px rgba(0,0,0,0.5); }
+    #health-bar .hp-text { color:#fff; font-size:16px; font-weight:700; text-shadow:0 0 4px rgba(0,0,0,0.7); min-width:40px; text-align:center; font-family:"Poppins",sans-serif; }
+    #health-bar .hp-bg { width:120px; height:12px; background:rgba(0,0,0,0.4); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.2); }
+    #health-bar .hp-fill { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:6px; transition:width 0.2s; }
     #inventory { position:fixed; bottom:15px; left:50%; transform:translateX(-50%); display:none; gap:6px; z-index:20; }
     #crafting { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:30; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
     #crafting .window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:24px; min-width:340px; box-shadow:0 0 40px rgba(139,92,246,0.3); }
@@ -85,6 +90,11 @@
 
   <div id="crosshair">+</div>
   <div id="fps">0 FPS</div>
+  <div id="health-bar">
+    <span class="hp-icon">❤</span>
+    <div class="hp-bg"><div class="hp-fill" id="hpFill" style="width:100%"></div></div>
+    <span class="hp-text" id="hpText">20/20</span>
+  </div>
 
   <div id="inventory">
     <div class="slot" id="slot1"></div>
@@ -115,6 +125,11 @@
         <label>Render Distance:</label>
         <input type="range" id="rdSlider2" min="8" max="150" value="20" step="1">
         <span id="rdValue2">20</span>
+      </div>
+      <div class="setting">
+        <label>Sensitivity:</label>
+        <input type="range" id="sensSlider" min="1" max="20" value="5" step="1">
+        <span id="sensValue">5</span>
       </div>
       <button id="btn-resume">RESUME</button>
       <button id="btn-back-menu">BACK TO MENU</button>
@@ -453,7 +468,16 @@
       glueyMeshes.push(m);
     }
     const glueys = [];
-    let glueySpawnTimer = 5;
+    for (let gi = 0; gi < 15; gi++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 5 + Math.random() * 20;
+      const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
+      const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
+      const mesh = glueyMeshes[gi];
+      const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh };
+      if (mesh) { mesh.position.set(sx, sy + 0.75, sz); mesh.visible = true; }
+      glueys.push(g);
+    }
 
     const raycaster = new THREE.Raycaster();
     const scrapTex = new THREE.TextureLoader().load('./Paper Scrap.png');
@@ -653,6 +677,10 @@
     let yaw = 0;
     let pitch = 0;
     let onGround = true;
+    let playerHealth = 20;
+    const maxHealth = 20;
+    let fallStartY = 0;
+    let sens = 0.002;
     let thirdPerson = false;
     let isCrafting = false;
     let isBreaking = false;
@@ -684,6 +712,7 @@
       blocker.style.display = 'none';
       document.getElementById('crosshair').style.display = 'block';
       document.getElementById('fps').style.display = 'block';
+      document.getElementById('health-bar').style.display = 'flex';
       document.getElementById('inventory').style.display = 'flex';
     }
 
@@ -734,12 +763,14 @@
         pauseOverlay.style.display = 'none';
         document.getElementById('crosshair').style.display = 'block';
         fpsEl.style.display = 'block';
+        document.getElementById('health-bar').style.display = 'flex';
         document.getElementById('inventory').style.display = isCrafting ? 'flex' : 'flex';
       } else if (isCrafting) {
         pauseOverlay.style.display = 'none';
         blocker.style.display = 'none';
         document.getElementById('crosshair').style.display = 'none';
         fpsEl.style.display = 'none';
+        document.getElementById('health-bar').style.display = 'flex';
         document.getElementById('inventory').style.display = 'flex';
       } else if (gameStarted) {
         isPaused = true;
@@ -747,6 +778,7 @@
         blocker.style.display = 'none';
         document.getElementById('crosshair').style.display = 'none';
         fpsEl.style.display = 'none';
+        document.getElementById('health-bar').style.display = 'none';
         document.getElementById('inventory').style.display = 'none';
       } else {
         blocker.style.display = 'flex';
@@ -757,10 +789,18 @@
       }
     });
 
+    const sensSlider = document.getElementById('sensSlider');
+    const sensValue = document.getElementById('sensValue');
+    if (sensSlider) {
+      sensSlider.addEventListener('input', () => {
+        sens = parseInt(sensSlider.value) * 0.0004;
+        sensValue.textContent = sensSlider.value;
+      });
+    }
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== renderer.domElement) return;
-      yaw -= e.movementX * 0.002;
-      pitch -= e.movementY * 0.002;
+      yaw -= e.movementX * sens;
+      pitch -= e.movementY * sens;
       const pitchLimit = thirdPerson ? Math.PI/4 : Math.PI/2;
       pitch = Math.max(-pitchLimit, Math.min(pitchLimit, pitch));
     });
@@ -1189,6 +1229,7 @@
       playerBody.position.x = Math.max(-bound, Math.min(bound, playerBody.position.x));
       playerBody.position.z = Math.max(-bound, Math.min(bound, playerBody.position.z));
 
+      const wasOnGround = onGround;
       const bx = Math.floor(playerBody.position.x + halfX);
       const bz = Math.floor(playerBody.position.z + halfZ);
       if (bx >= 0 && bx < gridX && bz >= 0 && bz < gridZ) {
@@ -1240,6 +1281,20 @@
       if (keys['Space'] && onGround) {
         velocity.y = 7;
         onGround = false;
+      }
+
+      if (wasOnGround && !onGround) {
+        fallStartY = playerBody.position.y;
+      } else if (!wasOnGround && onGround) {
+        const fallDist = fallStartY - playerBody.position.y;
+        if (fallDist >= 5) {
+          const dmg = Math.floor(fallDist - 5) + 1;
+          playerHealth = Math.max(0, playerHealth - dmg);
+          const hpPct = playerHealth / maxHealth * 100;
+          document.getElementById('hpFill').style.width = hpPct + '%';
+          document.getElementById('hpFill').style.background = hpPct > 50 ? 'linear-gradient(90deg,#22c55e,#16a34a)' : hpPct > 25 ? 'linear-gradient(90deg,#eab308,#ca8a04)' : 'linear-gradient(90deg,#ef4444,#dc2626)';
+          document.getElementById('hpText').textContent = playerHealth + '/' + maxHealth;
+        }
       }
 
       for (let i = scrapItems.length - 1; i >= 0; i--) {
@@ -1313,26 +1368,37 @@
       }
 
       // Gluey system
-      glueySpawnTimer -= dt;
-      if (glueySpawnTimer <= 0) {
-        glueySpawnTimer = 30 + Math.random() * 15;
-        const a = Math.random() * Math.PI * 2;
-        const d = 10 + Math.random() * 15;
-        const sx = playerBody.position.x + Math.cos(a) * d;
-        const sz = playerBody.position.z + Math.sin(a) * d;
-        const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
-        const freeMesh = glueyMeshes.find(m => !m.visible) || null;
-        const g = {
-          x: sx, y: sy + 0.75, z: sz,
-          vy: 0, onGround: true,
-          moveTimer: Math.random() * 2,
-          dirX: Math.cos(a), dirZ: Math.sin(a),
-          mesh: freeMesh
-        };
-        if (freeMesh) { freeMesh.position.set(sx, sy + 0.75, sz); freeMesh.visible = true; }
-        glueys.push(g);
+      function glueyCollidesAt(gx, gy, gz) {
+        const hwX = 0.25, hwZ = 0.25, hh = 0.75;
+        const minBX = Math.floor(gx - hwX + halfX);
+        const maxBX = Math.floor(gx + hwX + halfX - 0.001);
+        const minBY = Math.floor(gy - hh);
+        const maxBY = Math.floor(gy + hh - 0.001);
+        const minBZ = Math.floor(gz - hwZ + halfZ);
+        const maxBZ = Math.floor(gz + hwZ + halfZ - 0.001);
+        for (let bx = minBX; bx <= maxBX; bx++) {
+          for (let by = minBY; by <= maxBY; by++) {
+            for (let bz = minBZ; bz <= maxBZ; bz++) {
+              if (isSolidBlock(bx, bz, by)) return true;
+            }
+          }
+        }
+        return false;
       }
-      for (let gi = glueys.length - 1; gi >= 0; gi--) {
+      function glueyBlockedInDir(gx, gy, gz, dx, dz) {
+        const hwX = 0.25, hwZ = 0.25, hh = 0.75, eps = 0.001;
+        const edgeX = gx + dx * hwX;
+        const edgeZ = gz + dz * hwZ;
+        const bx = Math.floor(edgeX + halfX + (dx > 0 ? eps : (dx < 0 ? -eps : 0)));
+        const bz = Math.floor(edgeZ + halfZ + (dz > 0 ? eps : (dz < 0 ? -eps : 0)));
+        const minBY = Math.floor(gy - hh + eps);
+        const maxBY = Math.floor(gy + hh - eps);
+        for (let by = minBY; by <= maxBY; by++) {
+          if (by >= 0 && by < gridY && isSolidBlock(bx, bz, by)) return true;
+        }
+        return false;
+      }
+      for (let gi = 0; gi < glueys.length; gi++) {
         const g = glueys[gi];
         g.moveTimer -= dt;
         if (g.moveTimer <= 0) {
@@ -1346,8 +1412,20 @@
           g.onGround = false;
         }
         g.vy -= 20 * dt;
-        g.x += g.dirX * 2.5 * dt;
-        g.z += g.dirZ * 2.5 * dt;
+        const gNextX = g.x + g.dirX * 2.5 * dt;
+        if (!glueyBlockedInDir(gNextX, g.y, g.z, Math.sign(g.dirX), 0)) {
+          g.x = gNextX;
+        } else {
+          g.dirX = 0;
+          g.moveTimer = 0;
+        }
+        const gNextZ = g.z + g.dirZ * 2.5 * dt;
+        if (!glueyBlockedInDir(g.x, g.y, gNextZ, 0, Math.sign(g.dirZ))) {
+          g.z = gNextZ;
+        } else {
+          g.dirZ = 0;
+          g.moveTimer = 0;
+        }
         g.y += g.vy * dt;
         const gbx = Math.floor(g.x + halfX);
         const gbz = Math.floor(g.z + halfZ);
@@ -1380,18 +1458,12 @@
         if (g.y < 0.75) {
           g.y = 0.75; g.vy = 0; g.onGround = true;
         }
-        const pdx = playerBody.position.x - g.x;
-        const pdz = playerBody.position.z - g.z;
-        if (pdx * pdx + pdz * pdz > 625) {
-          const pLen = Math.sqrt(pdx * pdx + pdz * pdz);
-          g.x += pdx / pLen * 3 * dt;
-          g.z += pdz / pLen * 3 * dt;
-        }
         if (g.mesh) {
           g.mesh.position.set(g.x, g.y, g.z);
-          g.mesh.rotation.y = Math.atan2(g.dirX, g.dirZ);
-          const gDist2 = pdx * pdx + pdz * pdz;
-          g.mesh.visible = gDist2 < renderDist * renderDist;
+          g.mesh.rotation.y = Math.atan2(g.dirX || 0.001, g.dirZ || 0);
+          const gdx = playerBody.position.x - g.x;
+          const gdz = playerBody.position.z - g.z;
+          g.mesh.visible = gdx * gdx + gdz * gdz < renderDist * renderDist;
         }
       }
 

@@ -251,12 +251,22 @@
     scene.add(floor);
 
     const terrainOctaves = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 5; i++) {
       terrainOctaves.push({
-        f: Math.random() * 0.08 + 0.01,
-        g: Math.random() * 0.08 - 0.04,
-        p: Math.random() * Math.PI * 2,
-        a: Math.random() * 3.5 + 0.8,
+        f: Math.random() * 0.015 + 0.003, g: Math.random() * 0.015 - 0.0075,
+        p: Math.random() * Math.PI * 2, a: Math.random() * 8 + 5,
+      });
+    }
+    for (let i = 0; i < 6; i++) {
+      terrainOctaves.push({
+        f: Math.random() * 0.04 + 0.015, g: Math.random() * 0.04 - 0.02,
+        p: Math.random() * Math.PI * 2, a: Math.random() * 4 + 2,
+      });
+    }
+    for (let i = 0; i < 5; i++) {
+      terrainOctaves.push({
+        f: Math.random() * 0.12 + 0.05, g: Math.random() * 0.12 - 0.06,
+        p: Math.random() * Math.PI * 2, a: Math.random() * 1.5 + 0.4,
       });
     }
 
@@ -265,7 +275,7 @@
       for (const o of terrainOctaves) {
         n += Math.sin(x * o.f + z * o.g + o.p) * o.a;
       }
-      return Math.max(1, Math.round(30 + n));
+      return Math.max(1, Math.round(28 + n));
     }
 
     const blockTex = new THREE.TextureLoader().load('./Paper Block.png');
@@ -282,96 +292,13 @@
     const scaleDummy = new THREE.Object3D();
     const CHUNK = 10;
     const chX = Math.ceil(gridX / CHUNK), chZ = Math.ceil(gridZ / CHUNK), chY = Math.ceil(gridY / CHUNK);
-    const chunks = new Array(chX * chZ * chY).fill(null);
-    const allChunkMeshes = [];
+    const loadedChunks = new Map();
     const visibleMeshes = [];
-    for (let cx = 0; cx < chX; cx++) {
-      for (let cz = 0; cz < chZ; cz++) {
-        for (let cy = 0; cy < chY; cy++) {
-          const sx = cx * CHUNK, sz = cz * CHUNK, sy = cy * CHUNK;
-          const ex = Math.min(sx + CHUNK, gridX), ez = Math.min(sz + CHUNK, gridZ), ey = Math.min(sy + CHUNK, gridY);
-          const nx = ex - sx, nz = ez - sz, ny = ey - sy;
-          let hasSolid = false;
-          for (let x = sx; x < ex && !hasSolid; x++) {
-            for (let z = sz; z < ez && !hasSolid; z++) {
-              if (terrainHeight(x, z) > sy) { hasSolid = true; }
-            }
-          }
-          if (!hasSolid) continue;
-          const count = nx * nz * ny;
-          const mesh = new THREE.InstancedMesh(cubeGeo, blockMat, count);
-          const waterMesh = new THREE.InstancedMesh(cubeGeo, waterMat, count);
-          mesh.receiveShadow = true; mesh.castShadow = true;
-          waterMesh.receiveShadow = true; waterMesh.castShadow = true;
-          const states = new Uint8Array(count);
-          let i = 0;
-          for (let x = sx; x < ex; x++) {
-            for (let z = sz; z < ez; z++) {
-              const h = terrainHeight(x, z);
-              for (let y = sy; y < ey; y++) {
-                const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
-                if (y >= h) {
-                  states[i] = 0;
-                  scaleDummy.scale.set(0, 0, 0);
-                  scaleDummy.position.set(wx, wy, wz);
-                  scaleDummy.updateMatrix();
-                  mesh.setMatrixAt(i, scaleDummy.matrix);
-                  waterMesh.setMatrixAt(i, scaleDummy.matrix);
-                } else {
-                  if (Math.random() < 0.05) {
-                    states[i] = 2;
-                    scaleDummy.scale.set(1, 1, 1);
-                    scaleDummy.position.set(wx, wy, wz);
-                    scaleDummy.updateMatrix();
-                    waterMesh.setMatrixAt(i, scaleDummy.matrix);
-                    scaleDummy.scale.set(0, 0, 0);
-                    scaleDummy.updateMatrix();
-                    mesh.setMatrixAt(i, scaleDummy.matrix);
-                  } else {
-                    states[i] = 1;
-                    scaleDummy.scale.set(1, 1, 1);
-                    scaleDummy.position.set(wx, wy, wz);
-                    scaleDummy.updateMatrix();
-                    mesh.setMatrixAt(i, scaleDummy.matrix);
-                    scaleDummy.scale.set(0, 0, 0);
-                    scaleDummy.updateMatrix();
-                    waterMesh.setMatrixAt(i, scaleDummy.matrix);
-                  }
-                }
-                i++;
-              }
-            }
-          }
-          mesh.instanceMatrix.needsUpdate = true;
-          waterMesh.instanceMatrix.needsUpdate = true;
-          const colArr = new Float32Array(count * 3);
-          const waterColArr = new Float32Array(count * 3);
-          for (let ci = 0; ci < count; ci++) { colArr[ci * 3] = 1; colArr[ci * 3 + 1] = 1; colArr[ci * 3 + 2] = 1; waterColArr[ci * 3] = 1; waterColArr[ci * 3 + 1] = 1; waterColArr[ci * 3 + 2] = 1; }
-          mesh.instanceColor = new THREE.InstancedBufferAttribute(colArr, 3);
-          waterMesh.instanceColor = new THREE.InstancedBufferAttribute(waterColArr, 3);
-          scene.add(mesh);
-          scene.add(waterMesh);
-          allChunkMeshes.push(mesh);
-          allChunkMeshes.push(waterMesh);
-          visibleMeshes.push(mesh);
-          visibleMeshes.push(waterMesh);
-          const cIdx = ((cx * chZ + cz) * chY) + cy;
-          chunks[cIdx] = {
-            mesh, waterMesh, states, nx, ny, nz, sx, sy, sz,
-            center: new THREE.Vector3(
-              (sx + ex - 1) / 2 - halfX + 0.5,
-              (sy + ey - 1) / 2 + 0.5,
-              (sz + ez - 1) / 2 - halfZ + 0.5
-            ),
-            isFar: false
-          };
-        }
-      }
-    }
-    function getChunk(cx, cz, cy) { return chunks[((cx * chZ + cz) * chY) + cy]; }
+    const chunkKey = (cx, cz, cy) => cx + ',' + cz + ',' + cy;
+    function getChunk(cx, cz, cy) { return loadedChunks.get(chunkKey(cx, cz, cy)) || null; }
     function ensureChunk(cx, cz, cy) {
-      const idx = ((cx * chZ + cz) * chY) + cy;
-      let c = chunks[idx];
+      const key = chunkKey(cx, cz, cy);
+      let c = loadedChunks.get(key);
       if (c) return c;
       const sx = cx * CHUNK, sz = cz * CHUNK, sy = cy * CHUNK;
       const ex = Math.min(sx + CHUNK, gridX), ez = Math.min(sz + CHUNK, gridZ), ey = Math.min(sy + CHUNK, gridY);
@@ -429,8 +356,6 @@
       waterMesh.instanceColor = new THREE.InstancedBufferAttribute(waterColArr, 3);
       scene.add(mesh);
       scene.add(waterMesh);
-      allChunkMeshes.push(mesh);
-      allChunkMeshes.push(waterMesh);
       c = {
         mesh, waterMesh, states, nx, ny, nz, sx, sy, sz,
         center: new THREE.Vector3(
@@ -440,7 +365,7 @@
         ),
         isFar: false
       };
-      chunks[idx] = c;
+      loadedChunks.set(key, c);
       visibleMeshes.push(mesh);
       visibleMeshes.push(waterMesh);
       return c;
@@ -490,6 +415,17 @@
       const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh };
       if (mesh) { mesh.position.set(sx, sy + 0.75, sz); mesh.visible = true; }
       glueys.push(g);
+    }
+    const startCX = Math.floor((playerBody.position.x + halfX) / CHUNK);
+    const startCZ = Math.floor((playerBody.position.z + halfZ) / CHUNK);
+    const startCY = Math.floor(playerBody.position.y / CHUNK);
+    const initR = Math.ceil(renderDist / CHUNK) + 1;
+    for (let cx = startCX - initR; cx <= startCX + initR; cx++) {
+      for (let cz = startCZ - initR; cz <= startCZ + initR; cz++) {
+        for (let cy = Math.max(0, startCY - 1); cy <= Math.min(chY - 1, startCY + 1); cy++) {
+          if (cx >= 0 && cx < chX && cz >= 0 && cz < chZ) ensureChunk(cx, cz, cy);
+        }
+      }
     }
 
     const raycaster = new THREE.Raycaster();
@@ -639,7 +575,8 @@
       const hits = raycaster.intersectObjects(visibleMeshes);
       if (!hits.length) return;
       const hitObj = hits[0].object;
-      const chunk = chunks.find(c => c && (c.mesh === hitObj || c.waterMesh === hitObj));
+      let chunk = null;
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj) { chunk = c; break; } }
       if (!chunk) return;
       const hi = hits[0].instanceId;
       const bp = idxToWorldPos(chunk, hi);
@@ -1549,7 +1486,8 @@
           const hits = raycaster.intersectObjects(visibleMeshes);
           if (hits.length) {
             const hitObj = hits[0].object;
-            const chunk = chunks.find(c => c && (c.mesh === hitObj || c.waterMesh === hitObj));
+            let chunk = null;
+            for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj) { chunk = c; break; } }
             if (chunk) {
               const hid = hits[0].instanceId;
               if (chunk.states[hid] === 1 && distToBlock(chunk, hid) <= 5) {
@@ -1589,12 +1527,31 @@
         }
       }
 
-      const rd2c = (renderDist + CHUNK) * (renderDist + CHUNK);
       if ((fpsFrames % 10) === 0) {
+        const pCX = Math.floor((playerBody.position.x + halfX) / CHUNK);
+        const pCZ = Math.floor((playerBody.position.z + halfZ) / CHUNK);
+        const pCY = Math.floor(playerBody.position.y / CHUNK);
+        const loadR = Math.ceil(renderDist / CHUNK) + 1;
+        const unloadR = loadR + 2;
+        for (let cx = pCX - loadR; cx <= pCX + loadR; cx++) {
+          for (let cz = pCZ - loadR; cz <= pCZ + loadR; cz++) {
+            for (let cy = Math.max(0, pCY - 1); cy <= Math.min(chY - 1, pCY + 1); cy++) {
+              if (cx >= 0 && cx < chX && cz >= 0 && cz < chZ) ensureChunk(cx, cz, cy);
+            }
+          }
+        }
+        for (const [key, c] of loadedChunks) {
+          const parts = key.split(',');
+          const cx = parseInt(parts[0]), cz = parseInt(parts[1]), cy = parseInt(parts[2]);
+          if (Math.abs(cx - pCX) > unloadR || Math.abs(cz - pCZ) > unloadR || Math.abs(cy - pCY) > 2) {
+            scene.remove(c.mesh);
+            scene.remove(c.waterMesh);
+            loadedChunks.delete(key);
+          }
+        }
         visibleMeshes.length = 0;
-        for (let i = 0; i < chunks.length; i++) {
-          const c = chunks[i];
-          if (!c) continue;
+        const rd2c = (renderDist + CHUNK) * (renderDist + CHUNK);
+        for (const c of loadedChunks.values()) {
           const dx = c.center.x - playerBody.position.x;
           const dy = c.center.y - playerBody.position.y;
           const dz = c.center.z - playerBody.position.z;

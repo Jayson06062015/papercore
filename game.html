@@ -441,15 +441,19 @@
 
     const glueyTex = new THREE.TextureLoader().load('./Gluey.png');
     glueyTex.encoding = THREE.sRGBEncoding;
-    const gluey = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 1.5, 0.5),
-      new THREE.MeshStandardMaterial({ map: glueyTex, transparent: true, roughness: 0.6 })
-    );
-    const gStartY = terrainHeight(Math.floor(gridX / 2), Math.floor(gridZ / 2));
-    gluey.position.set(3, gStartY + 1.5 / 2 + 1, 0);
-    gluey.castShadow = true;
-    scene.add(gluey);
-    const glueyAI = { vx: 0, vz: 0, vy: 0, onGround: false, moveTimer: 0, dirX: 1, dirZ: 0 };
+    const glueyMat = new THREE.MeshStandardMaterial({ map: glueyTex, transparent: true, roughness: 0.6 });
+    const glueyGeo = new THREE.BoxGeometry(0.5, 1.5, 0.5);
+    const GLUEY_POOL = 30;
+    const glueyMeshes = [];
+    for (let i = 0; i < GLUEY_POOL; i++) {
+      const m = new THREE.Mesh(glueyGeo, glueyMat);
+      m.visible = false;
+      m.castShadow = true;
+      scene.add(m);
+      glueyMeshes.push(m);
+    }
+    const glueys = [];
+    let glueySpawnTimer = 5;
 
     const raycaster = new THREE.Raycaster();
     const scrapTex = new THREE.TextureLoader().load('./Paper Scrap.png');
@@ -1308,49 +1312,87 @@
         }
       }
 
-      // Gluey AI
-      glueyAI.moveTimer -= dt;
-      if (glueyAI.moveTimer <= 0) {
-        glueyAI.moveTimer = 1 + Math.random() * 2;
+      // Gluey system
+      glueySpawnTimer -= dt;
+      if (glueySpawnTimer <= 0) {
+        glueySpawnTimer = 30 + Math.random() * 15;
         const a = Math.random() * Math.PI * 2;
-        glueyAI.dirX = Math.cos(a);
-        glueyAI.dirZ = Math.sin(a);
+        const d = 10 + Math.random() * 15;
+        const sx = playerBody.position.x + Math.cos(a) * d;
+        const sz = playerBody.position.z + Math.sin(a) * d;
+        const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
+        const freeMesh = glueyMeshes.find(m => !m.visible) || null;
+        const g = {
+          x: sx, y: sy + 0.75, z: sz,
+          vy: 0, onGround: true,
+          moveTimer: Math.random() * 2,
+          dirX: Math.cos(a), dirZ: Math.sin(a),
+          mesh: freeMesh
+        };
+        if (freeMesh) { freeMesh.position.set(sx, sy + 0.75, sz); freeMesh.visible = true; }
+        glueys.push(g);
       }
-      if (glueyAI.onGround && Math.random() < 1.5 * dt) {
-        glueyAI.vy = 4 + Math.random() * 2;
-        glueyAI.onGround = false;
-      }
-      glueyAI.vy -= 20 * dt;
-      gluey.position.x += glueyAI.dirX * 2.5 * dt;
-      gluey.position.z += glueyAI.dirZ * 2.5 * dt;
-      gluey.position.y += glueyAI.vy * dt;
-      gluey.rotation.y = Math.atan2(glueyAI.dirX, glueyAI.dirZ);
-      const gbx = Math.floor(gluey.position.x + halfX);
-      const gbz = Math.floor(gluey.position.z + halfZ);
-      const belowGY = Math.floor(gluey.position.y - 1.5 / 2);
-      if (gbx >= 0 && gbx < gridX && gbz >= 0 && gbz < gridZ && belowGY >= 0 && belowGY < gridY) {
-        if (glueyAI.vy <= 0 && isSolidBlock(gbx, gbz, belowGY)) {
-          const snap = belowGY + 1 + 1.5 / 2;
-          if (gluey.position.y <= snap + 0.05) {
-            gluey.position.y = snap;
-            glueyAI.vy = 0;
-            glueyAI.onGround = true;
-          }
-        } else if (!isSolidBlock(gbx, gbz, belowGY)) {
-          glueyAI.onGround = false;
+      for (let gi = glueys.length - 1; gi >= 0; gi--) {
+        const g = glueys[gi];
+        g.moveTimer -= dt;
+        if (g.moveTimer <= 0) {
+          g.moveTimer = 1 + Math.random() * 2;
+          const a2 = Math.random() * Math.PI * 2;
+          g.dirX = Math.cos(a2);
+          g.dirZ = Math.sin(a2);
         }
-      }
-      if (gluey.position.y < 0.75) {
-        gluey.position.y = 0.75;
-        glueyAI.vy = 0;
-        glueyAI.onGround = true;
-      }
-      const pdx = playerBody.position.x - gluey.position.x;
-      const pdz = playerBody.position.z - gluey.position.z;
-      if (pdx * pdx + pdz * pdz > 625) {
-        const pLen = Math.sqrt(pdx * pdx + pdz * pdz);
-        gluey.position.x += pdx / pLen * 3 * dt;
-        gluey.position.z += pdz / pLen * 3 * dt;
+        if (g.onGround && Math.random() < 1.5 * dt) {
+          g.vy = 7;
+          g.onGround = false;
+        }
+        g.vy -= 20 * dt;
+        g.x += g.dirX * 2.5 * dt;
+        g.z += g.dirZ * 2.5 * dt;
+        g.y += g.vy * dt;
+        const gbx = Math.floor(g.x + halfX);
+        const gbz = Math.floor(g.z + halfZ);
+        if (g.vy <= 0 && gbx >= 0 && gbx < gridX && gbz >= 0 && gbz < gridZ) {
+          let groundY = -1;
+          const cxc = Math.floor(gbx / CHUNK), czc = Math.floor(gbz / CHUNK);
+          for (let cy = chY - 1; cy >= 0; cy--) {
+            const chunk = getChunk(cxc, czc, cy);
+            if (!chunk) continue;
+            for (let ly = chunk.ny - 1; ly >= 0; ly--) {
+              const blockY = chunk.sy + ly;
+              if (blockY + 1 > g.y) continue;
+              const localId = chunkLocalIdx(chunk, gbx, gbz, blockY);
+              if (localId >= 0 && localId < chunk.states.length && chunk.states[localId] !== 0) {
+                groundY = blockY;
+                break;
+              }
+            }
+            if (groundY >= 0) break;
+          }
+          if (groundY >= 0) {
+            const snapY = groundY + 1 + 0.75;
+            if (g.y <= snapY + 0.05) {
+              g.y = snapY;
+              g.vy = 0;
+              g.onGround = true;
+            }
+          }
+        }
+        if (g.y < 0.75) {
+          g.y = 0.75; g.vy = 0; g.onGround = true;
+        }
+        const pdx = playerBody.position.x - g.x;
+        const pdz = playerBody.position.z - g.z;
+        if (pdx * pdx + pdz * pdz > 625) {
+          const pLen = Math.sqrt(pdx * pdx + pdz * pdz);
+          g.x += pdx / pLen * 3 * dt;
+          g.z += pdz / pLen * 3 * dt;
+        }
+        if (g.mesh) {
+          g.mesh.position.set(g.x, g.y, g.z);
+          g.mesh.rotation.y = Math.atan2(g.dirX, g.dirZ);
+          const gDist2 = pdx * pdx + pdz * pdz;
+          g.mesh.visible = gDist2 < renderDist * renderDist;
+        }
       }
 
       if (isBreaking) {

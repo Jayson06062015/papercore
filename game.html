@@ -243,9 +243,12 @@
     const blockTex = new THREE.TextureLoader().load('./Paper Block.png');
     blockTex.encoding = THREE.sRGBEncoding;
     const blockMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: blockTex, roughness: 0.8 });
-    const waterTex = new THREE.TextureLoader().load('./Water Ball.png');
+    const waterTex = new THREE.TextureLoader().load('./Water Block.png');
     waterTex.encoding = THREE.sRGBEncoding;
     const waterMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterTex, roughness: 0.2, transparent: true, opacity: 0.85 });
+    const waterBallTex = new THREE.TextureLoader().load('./Water Ball.png');
+    waterBallTex.encoding = THREE.sRGBEncoding;
+    const waterBallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterBallTex, transparent: true });
     const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
     const mx = new THREE.Matrix4();
     const scaleDummy = new THREE.Object3D();
@@ -450,6 +453,15 @@
       scene.add(m);
       scrapPool.push(m);
     }
+    const wbGeo = new THREE.BoxGeometry(0.25, 0.25, 0.25);
+    const WB_POOL_SIZE = 100;
+    const waterBallPool = [];
+    for (let i = 0; i < WB_POOL_SIZE; i++) {
+      const m = new THREE.Mesh(wbGeo, waterBallMat);
+      m.visible = false;
+      scene.add(m);
+      waterBallPool.push(m);
+    }
 
     function isSolidBlock(bx, bz, by) {
       if (bx < 0 || bx >= gridX || bz < 0 || bz >= gridZ || by < 0 || by >= gridY) return false;
@@ -478,6 +490,13 @@
       return false;
     }
 
+    function freePoolMesh(pool) {
+      for (let i = 0; i < pool.length; i++) {
+        if (!pool[i].visible) return pool[i];
+      }
+      return null;
+    }
+
     function breakBlock(chunk, localId) {
       const bp = idxToWorldPos(chunk, localId);
       const wasWater = chunk.states[localId] === 2;
@@ -497,9 +516,8 @@
       if (wasWater) {
         const dropCount = 1 + Math.floor(Math.random() * 3);
         for (let s = 0; s < dropCount; s++) {
-          const poolIdx = scrapItems.length + s;
-          if (poolIdx >= POOL_SIZE) break;
-          const mesh = scrapPool[poolIdx];
+          const mesh = freePoolMesh(waterBallPool);
+          if (!mesh) break;
           mesh.position.set(
             bp.x + (Math.random() - 0.5) * 0.6,
             bp.y + 0.5,
@@ -511,9 +529,8 @@
       } else {
         const scrapCount = 5 + Math.floor(Math.random() * 3);
         for (let s = 0; s < scrapCount; s++) {
-          const poolIdx = scrapItems.length + s;
-          if (poolIdx >= POOL_SIZE) break;
-          const mesh = scrapPool[poolIdx];
+          const mesh = freePoolMesh(scrapPool);
+          if (!mesh) break;
           mesh.position.set(
             bp.x + (Math.random() - 0.5) * 0.6,
             bp.y + 0.5,
@@ -585,7 +602,7 @@
       const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(by / CHUNK);
       const pChunk = ensureChunk(cxc, czc, cyc);
       const pId = chunkLocalIdx(pChunk, bx, bz, by);
-      if (pChunk.states[pId] !== 1) return;
+      if (pChunk.states[pId] !== 0) return;
       if (isWater) {
         removeItems('water_block', 1);
         pChunk.states[pId] = 2;
@@ -890,7 +907,7 @@
       attachable:'./Attachable Paper Scrap.png', cartolina:'./Cartolina Scrap.png',
       shield:'./Paper Shield.png', reinforced_shield:'./Reinforced Paper Shield.png',
       paper_block:'./Paper Block.png', reinforced_block:'./Reinforced Paper Block.png',
-      waterball:'./Water Ball.png', water_block:'./Water Ball.png'
+      waterball:'./Water Ball.png', water_block:'./Water Block.png'
     };
 
     function updateSlot(i) {
@@ -957,7 +974,7 @@
 
     const recipes = [
       { id: 'paper_block', name: 'Paper Block', result: 'paper_block', resultImg: './Paper Block.png', ingredients: [{ type: 'scrap', count: 8, img: './Paper Scrap.png' }] },
-      { id: 'water_block', name: 'Water Block', result: 'water_block', resultImg: './Water Ball.png', ingredients: [{ type: 'waterball', count: 4, img: './Water Ball.png' }] },
+      { id: 'water_block', name: 'Water Block', result: 'water_block', resultImg: './Water Block.png', ingredients: [{ type: 'waterball', count: 4, img: './Water Ball.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');
@@ -1328,6 +1345,7 @@
 
       const rd2c = (renderDist + CHUNK) * (renderDist + CHUNK);
       if ((fpsFrames % 10) === 0) {
+        visibleMeshes.length = 0;
         for (let i = 0; i < chunks.length; i++) {
           const c = chunks[i];
           if (!c) continue;
@@ -1335,21 +1353,12 @@
           const dy = c.center.y - playerBody.position.y;
           const dz = c.center.z - playerBody.position.z;
           const far = dx * dx + dy * dy + dz * dz > rd2c;
-          if (far !== c.isFar) {
-            c.isFar = far;
-            c.mesh.visible = !far;
-            if (c.waterMesh) c.waterMesh.visible = !far;
-            if (far) {
-              const vi = visibleMeshes.indexOf(c.mesh);
-              if (vi >= 0) visibleMeshes.splice(vi, 1);
-              if (c.waterMesh) {
-                const wi = visibleMeshes.indexOf(c.waterMesh);
-                if (wi >= 0) visibleMeshes.splice(wi, 1);
-              }
-            } else {
-              visibleMeshes.push(c.mesh);
-              if (c.waterMesh) visibleMeshes.push(c.waterMesh);
-            }
+          c.isFar = far;
+          c.mesh.visible = !far;
+          if (c.waterMesh) c.waterMesh.visible = !far;
+          if (!far) {
+            visibleMeshes.push(c.mesh);
+            if (c.waterMesh) visibleMeshes.push(c.waterMesh);
           }
         }
       }

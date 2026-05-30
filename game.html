@@ -834,8 +834,9 @@
         chunkBuildQueue.length = 0;
         visibleMeshes.length = 0;
         for (const cd of data.chunks) {
-          const chunk = ensureChunkSync(cd.cx, cd.cz, cd.cy);
-          if (chunk) { chunk.sy = cd.sy; chunk.states = new Uint8Array(cd.states); chunkBuildQueue.push(chunk.key); }
+          const chunk = ensureChunk(cd.cx, cd.cz, cd.cy);
+          chunk.sy = cd.sy;
+          chunk.states = new Uint8Array(cd.states);
         }
         playerBody.position.set(data.player.x, data.player.y, data.player.z);
         playerHealth = data.player.health;

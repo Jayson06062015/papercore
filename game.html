@@ -1123,7 +1123,7 @@
 
     function addToInventory(type) {
       for (let i = 0; i < inventory.length; i++) {
-        if (inventory[i].type === type && inventory[i].count > 0) {
+        if (inventory[i].type === type && inventory[i].count > 0 && type !== 'shield' && type !== 'reinforced_shield') {
           inventory[i].count++;
           if (type === 'shield') inventory[i].durability.push(50);
           if (type === 'reinforced_shield') inventory[i].durability.push(250);

@@ -343,7 +343,7 @@
       let i = 0;
       for (let x = sx; x < ex; x++) {
         for (let z = sz; z < ez; z++) {
-          for (let y = sy; y < ey; y++) {
+          for (let y = sy; y < sy + ny; y++) {
             const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
             const state = states[i];
             const te = pm.elements;

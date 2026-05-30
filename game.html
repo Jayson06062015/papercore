@@ -1125,7 +1125,7 @@
       for (let i = 0; i < inventory.length; i++) {
         if (inventory[i].type === type && inventory[i].count > 0) {
           inventory[i].count++;
-          if (type === 'shield') inventory[i].durability.push(40);
+          if (type === 'shield') inventory[i].durability.push(50);
           if (type === 'reinforced_shield') inventory[i].durability.push(250);
           updateSlot(i); return true;
         }
@@ -1133,7 +1133,7 @@
       for (let i = 0; i < inventory.length; i++) {
         if (inventory[i].type === null) {
           inventory[i].type = type; inventory[i].count = 1; inventory[i].durability = [];
-          if (type === 'shield') inventory[i].durability.push(40);
+          if (type === 'shield') inventory[i].durability.push(50);
           if (type === 'reinforced_shield') inventory[i].durability.push(250);
           updateSlot(i); return true;
         }
@@ -1153,6 +1153,18 @@
         }
       }
     }
+    function shieldBlock(dmg) {
+      const sel = inventory[selectedSlot];
+      if (!sel || (sel.type !== 'shield' && sel.type !== 'reinforced_shield')) return false;
+      sel.durability[0] -= dmg;
+      if (sel.durability[0] <= 0) {
+        sel.count--;
+        sel.durability.shift();
+        if (sel.count <= 0) { sel.type = null; sel.durability = []; }
+      }
+      updateSlot(selectedSlot);
+      return true;
+    }
 
     function countItem(type) {
       let total = 0;
@@ -1170,6 +1182,8 @@
       { id: 'paper', name: 'Paper', result: 'paper', resultImg: './Paper.png', ingredients: [{ type: 'scrap', count: 10, img: './Paper Scrap.png' }] },
       { id: 'cardboard', name: 'Cardboard', result: 'cardboard', resultImg: './Cardboard.png', ingredients: [{ type: 'paper', count: 10, img: './Paper.png' }] },
       { id: 'wood_plank', name: 'Wood Plank', result: 'wood_plank', resultImg: './Wood Plank.png', ingredients: [{ type: 'cardboard', count: 10, img: './Cardboard.png' }] },
+      { id: 'shield', name: 'Paper Shield', result: 'shield', resultImg: './Paper Shield.png', ingredients: [{ type: 'paper', count: 4, img: './Paper.png' }, { type: 'cartolina', count: 1, img: './Cartolina Scrap.png' }] },
+      { id: 'reinforced_shield', name: 'Reinforced Paper Shield', result: 'reinforced_shield', resultImg: './Reinforced Paper Shield.png', ingredients: [{ type: 'paper', count: 8, img: './Paper.png' }, { type: 'waterball', count: 4, img: './Water Ball.png' }, { type: 'cartolina', count: 2, img: './Cartolina Scrap.png' }] },
       { id: 'attachable', name: 'Attachable Paper Scrap', result: 'attachable', resultImg: './Attachable Paper Scrap.png', ingredients: [{ type: 'glue', count: 1, img: './Glue.png' }, { type: 'scrap', count: 1, img: './Paper Scrap.png' }] },
     ];
     let selectedRecipe = null;
@@ -1529,9 +1543,11 @@
             const hx = playerBody.position.x, hy = playerBody.position.y, hz = playerBody.position.z;
             if (Math.abs(p.pos.x - hx) < 0.55 && Math.abs(p.pos.y - hy) < 0.6 && Math.abs(p.pos.z - hz) < 0.2) {
               const dmg = p.type === 'reinforced' ? 5 : 2;
-              playerHealth = Math.max(0, playerHealth - dmg);
-              updateHealthDisplay();
-              if (playerHealth <= 0) { isPaused = true; die(); }
+              if (!shieldBlock(dmg)) {
+                playerHealth = Math.max(0, playerHealth - dmg);
+                updateHealthDisplay();
+                if (playerHealth <= 0) { isPaused = true; die(); }
+              }
               p.mesh.visible = false;
               projectiles.splice(i, 1);
               continue;
@@ -1596,9 +1612,11 @@
           const hx = playerBody.position.x, hy = playerBody.position.y, hz = playerBody.position.z;
           if (Math.abs(p.pos.x - hx) < 0.55 && Math.abs(p.pos.y - hy) < 0.6 && Math.abs(p.pos.z - hz) < 0.2) {
             const dmg = p.type === 'reinforced' ? 5 : 2;
-            playerHealth = Math.max(0, playerHealth - dmg);
-            updateHealthDisplay();
-            if (playerHealth <= 0) { isPaused = true; die(); }
+            if (!shieldBlock(dmg)) {
+              playerHealth = Math.max(0, playerHealth - dmg);
+              updateHealthDisplay();
+              if (playerHealth <= 0) { isPaused = true; die(); }
+            }
             p.mesh.visible = false;
             projectiles.splice(i, 1);
             continue;

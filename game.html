@@ -25,7 +25,7 @@
     #health-bar .hp-icon { font-size:20px; color:#ef4444; text-shadow:0 0 4px rgba(0,0,0,0.5); }
     #health-bar .hp-text { color:#fff; font-size:16px; font-weight:700; text-shadow:0 0 4px rgba(0,0,0,0.7); min-width:40px; text-align:center; font-family:"Poppins",sans-serif; }
     #health-bar .hp-bg { width:120px; height:12px; background:rgba(0,0,0,0.4); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.2); }
-    #health-bar .hp-fill { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:6px; }
+    #health-bar .hp-fill { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:6px; transition: none !important; }
     #inventory { position:fixed; bottom:15px; left:50%; transform:translateX(-50%); display:none; gap:6px; z-index:20; }
     #crafting { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:30; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
     #crafting .window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:24px; min-width:340px; box-shadow:0 0 40px rgba(139,92,246,0.3); }
@@ -648,8 +648,10 @@
       const fill = document.getElementById('hpFill');
       const text = document.getElementById('hpText');
       if (fill) {
+        fill.style.transition = 'none';
         fill.style.width = hpPct + '%';
         fill.style.background = hpPct > 50 ? 'linear-gradient(90deg,#22c55e,#16a34a)' : hpPct > 25 ? 'linear-gradient(90deg,#eab308,#ca8a04)' : 'linear-gradient(90deg,#ef4444,#dc2626)';
+        void fill.offsetHeight;
       }
       if (text) text.textContent = playerHealth + '/' + maxHealth;
     }

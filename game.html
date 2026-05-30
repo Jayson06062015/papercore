@@ -376,7 +376,14 @@
       waterMesh.instanceMatrix.needsUpdate = true;
       const colArr = new Float32Array(count * 3);
       const waterColArr = new Float32Array(count * 3);
-      for (let ci = 0; ci < count; ci++) { colArr[ci * 3] = 1; colArr[ci * 3 + 1] = 1; colArr[ci * 3 + 2] = 1; waterColArr[ci * 3] = 1; waterColArr[ci * 3 + 1] = 1; waterColArr[ci * 3 + 2] = 1; }
+      for (let ci = 0; ci < count; ci++) {
+        const st = states[ci];
+        const i3 = ci * 3;
+        if (st === 3) { colArr[i3]=0.54; colArr[i3+1]=0.27; colArr[i3+2]=0.07; }
+        else if (st === 4) { colArr[i3]=0.5; colArr[i3+1]=0.5; colArr[i3+2]=0.5; }
+        else { colArr[i3]=1; colArr[i3+1]=1; colArr[i3+2]=1; }
+        waterColArr[i3]=1; waterColArr[i3+1]=1; waterColArr[i3+2]=1;
+      }
       mesh.instanceColor = new THREE.InstancedBufferAttribute(colArr, 3);
       waterMesh.instanceColor = new THREE.InstancedBufferAttribute(waterColArr, 3);
       scene.add(mesh);
@@ -569,7 +576,7 @@
 
     function breakBlock(chunk, localId) {
       const bp = idxToWorldPos(chunk, localId);
-      const wasWater = chunk.states[localId] === 2;
+      const state = chunk.states[localId];
       chunk.states[localId] = 0;
       chunk.mesh.setColorAt(localId, white);
       chunk.mesh.instanceColor.needsUpdate = true;
@@ -582,18 +589,28 @@
       chunk.waterMesh.setMatrixAt(localId, tempMat);
       chunk.waterMesh.instanceMatrix.needsUpdate = true;
 
-      if (wasWater) {
+      if (state === 2) {
         const dropCount = 1 + Math.floor(Math.random() * 3);
         for (let s = 0; s < dropCount; s++) {
           const mesh = freePoolMesh(waterBallPool);
           if (!mesh) break;
-          mesh.position.set(
-            bp.x + (Math.random() - 0.5) * 0.6,
-            bp.y + 0.5,
-            bp.z + (Math.random() - 0.5) * 0.6
-          );
+          mesh.position.set(bp.x + (Math.random() - 0.5) * 0.6, bp.y + 0.5, bp.z + (Math.random() - 0.5) * 0.6);
           mesh.visible = true;
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'waterball' });
+        }
+      } else if (state === 3) {
+        const mesh = freePoolMesh(scrapPool);
+        if (mesh) {
+          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+          mesh.visible = true;
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'wood_plank' });
+        }
+      } else if (state === 4) {
+        const mesh = freePoolMesh(scrapPool);
+        if (mesh) {
+          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+          mesh.visible = true;
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'reinforced_block' });
         }
       } else {
         const scrapCount = 5 + Math.floor(Math.random() * 3);
@@ -673,7 +690,9 @@
       if (!sel || sel.count <= 0) return;
       const isWater = sel.type === 'water_block';
       const isPaper = sel.type === 'paper_block';
-      if (!isPaper && !isWater) return;
+      const isWood = sel.type === 'wood_plank';
+      const isReinf = sel.type === 'reinforced_block';
+      if (!isPaper && !isWater && !isWood && !isReinf) return;
       raycaster.setFromCamera({ x: 0, y: 0 }, camera);
       const hits = raycaster.intersectObjects(visibleMeshes);
       if (!hits.length) return;
@@ -707,13 +726,22 @@
         pChunk.waterMesh.setMatrixAt(pId, tempMat);
         pChunk.waterMesh.instanceMatrix.needsUpdate = true;
       } else {
-        removeItems('paper_block', 1);
-        pChunk.states[pId] = 1;
+        const state = isWood ? 3 : (isReinf ? 4 : 1);
+        const itemType = isWood ? 'wood_plank' : (isReinf ? 'reinforced_block' : 'paper_block');
+        removeItems(itemType, 1);
+        pChunk.states[pId] = state;
         const w = bx - halfX + 0.5, h = by + 0.5, d = bz - halfZ + 0.5;
         const te = tempMat.elements;
         te[0]=1;te[5]=1;te[10]=1;te[12]=w;te[13]=h;te[14]=d;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
         pChunk.mesh.setMatrixAt(pId, tempMat);
         pChunk.mesh.instanceMatrix.needsUpdate = true;
+        if (isWood) {
+          pChunk.mesh.setColorAt(pId, new THREE.Color(0.54, 0.27, 0.07));
+          pChunk.mesh.instanceColor.needsUpdate = true;
+        } else if (isReinf) {
+          pChunk.mesh.setColorAt(pId, new THREE.Color(0.5, 0.5, 0.5));
+          pChunk.mesh.instanceColor.needsUpdate = true;
+        }
         te[0]=0;te[5]=0;te[10]=0;
         pChunk.waterMesh.setMatrixAt(pId, tempMat);
         pChunk.waterMesh.instanceMatrix.needsUpdate = true;
@@ -1182,6 +1210,7 @@
       { id: 'paper', name: 'Paper', result: 'paper', resultImg: './Paper.png', ingredients: [{ type: 'scrap', count: 10, img: './Paper Scrap.png' }] },
       { id: 'cardboard', name: 'Cardboard', result: 'cardboard', resultImg: './Cardboard.png', ingredients: [{ type: 'paper', count: 10, img: './Paper.png' }] },
       { id: 'wood_plank', name: 'Wood Plank', result: 'wood_plank', resultImg: './Wood Plank.png', ingredients: [{ type: 'cardboard', count: 10, img: './Cardboard.png' }] },
+      { id: 'reinforced_block', name: 'Reinforced Paper Block', result: 'reinforced_block', resultImg: './Reinforced Paper Block.png', ingredients: [{ type: 'paper_block', count: 1, img: './Paper Block.png' }, { type: 'water_block', count: 1, img: './Water Block.png' }] },
       { id: 'shield', name: 'Paper Shield', result: 'shield', resultImg: './Paper Shield.png', ingredients: [{ type: 'paper', count: 4, img: './Paper.png' }, { type: 'cartolina', count: 1, img: './Cartolina Scrap.png' }] },
       { id: 'reinforced_shield', name: 'Reinforced Paper Shield', result: 'reinforced_shield', resultImg: './Reinforced Paper Shield.png', ingredients: [{ type: 'paper', count: 8, img: './Paper.png' }, { type: 'waterball', count: 4, img: './Water Ball.png' }, { type: 'cartolina', count: 2, img: './Cartolina Scrap.png' }] },
       { id: 'attachable', name: 'Attachable Paper Scrap', result: 'attachable', resultImg: './Attachable Paper Scrap.png', ingredients: [{ type: 'glue', count: 1, img: './Glue.png' }, { type: 'scrap', count: 1, img: './Paper Scrap.png' }] },
@@ -1910,6 +1939,18 @@
                 breakProgress = 0;
                 breakDuration = 2;
                 breakMesh = chunk.waterMesh;
+              } else if (chunk.states[hid] === 3 && distToBlock(chunk, hid) <= 5) {
+                breakChunk = chunk;
+                breakId = hid;
+                breakProgress = 0;
+                breakDuration = 25;
+                breakMesh = chunk.mesh;
+              } else if (chunk.states[hid] === 4 && distToBlock(chunk, hid) <= 5) {
+                breakChunk = chunk;
+                breakId = hid;
+                breakProgress = 0;
+                breakDuration = 7;
+                breakMesh = chunk.mesh;
               }
             }
           }

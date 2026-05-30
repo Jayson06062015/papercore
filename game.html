@@ -1749,7 +1749,7 @@
       for (let gi = 0; gi < glueys.length; gi++) {
         const g = glueys[gi];
         const gdx = playerBody.position.x - g.x, gdz = playerBody.position.z - g.z;
-        if (gdx * gdx + gdz * gdz > 10000) {
+        if (gdx * gdx + gdz * gdz > 900) {
           if (g.mesh) g.mesh.visible = false;
           glueys.splice(gi, 1); gi--;
           continue;

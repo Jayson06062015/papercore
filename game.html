@@ -464,7 +464,7 @@
     const GLUEY_POOL = 30;
     const glueyMeshes = [];
     for (let i = 0; i < GLUEY_POOL; i++) {
-      const m = new THREE.Mesh(glueyGeo, glueyMat);
+      const m = new THREE.Mesh(glueyGeo, glueyMat.clone());
       m.visible = false;
       m.castShadow = true;
       scene.add(m);
@@ -478,7 +478,7 @@
       const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
       const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
       const mesh = glueyMeshes[gi];
-      const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 5, panicTimer: 0 };
+      const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 5, panicTimer: 0, flashTimer: 0 };
       if (mesh) { mesh.position.set(sx, sy + 0.75, sz); mesh.visible = true; }
       glueys.push(g);
     }
@@ -489,7 +489,7 @@
     const CARTOLINE_POOL = 20;
     const cartolineMeshes = [];
     for (let i = 0; i < CARTOLINE_POOL; i++) {
-      const m = new THREE.Mesh(cartolineGeo, cartolineMat);
+      const m = new THREE.Mesh(cartolineGeo, cartolineMat.clone());
       m.visible = false;
       m.castShadow = true;
       scene.add(m);
@@ -503,7 +503,7 @@
       const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
       const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
       const mesh = cartolineMeshes[ci];
-      const c = { x: sx, y: sy + 0.9, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 20, throwCooldown: Math.random() * 3 };
+      const c = { x: sx, y: sy + 0.9, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 20, throwCooldown: Math.random() * 3, flashTimer: 0 };
       if (mesh) { mesh.position.set(sx, sy + 0.9, sz); mesh.visible = true; }
       cartolines.push(c);
     }
@@ -719,6 +719,63 @@
       mesh.visible = true;
       projectiles.push({ mesh, vel: dir.multiplyScalar(speed), pos: mesh.position.clone(), life: 3, type, traveled: 0, source: 'player' });
     }
+    function tryClubAttack() {
+      const sel = inventory[selectedSlot];
+      if (!sel || sel.count <= 0 || (sel.type !== 'cardboard_club' && sel.type !== 'wood_club')) return false;
+      raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+      const mobs = [];
+      for (const g of glueys) if (g.mesh && g.mesh.visible) mobs.push(g.mesh);
+      for (const c of cartolines) if (c.mesh && c.mesh.visible) mobs.push(c.mesh);
+      if (!mobs.length) return false;
+      const hits = raycaster.intersectObjects(mobs);
+      if (!hits.length) return false;
+      const hitMesh = hits[0].object;
+      const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
+
+      for (const g of glueys) {
+        if (g.mesh !== hitMesh) continue;
+        const dx = g.x - px, dy = g.y - py, dz = g.z - pz;
+        if (dx * dx + dy * dy + dz * dz >= 25) return false;
+        const dmg = sel.type === 'wood_club' ? 5 : 2;
+        g.hp -= dmg; g.panicTimer = 10; g.flashTimer = 0.5; g.mesh.material.color.setHex(0xff0000);
+        sel.durability[0]--;
+        if (sel.durability[0] <= 0) { sel.count--; sel.durability.shift(); if (sel.count <= 0) { sel.type = null; sel.durability = []; } }
+        updateSlot(selectedSlot);
+        if (g.hp <= 0) {
+          if (g.mesh) g.mesh.visible = false;
+          for (let di = 0; di < 2 + Math.floor(Math.random() * 2); di++) {
+            const gm = freePoolMesh(glueDropPool);
+            if (gm) { gm.position.set(g.x + (Math.random()-0.5)*0.6, g.y + 0.5, g.z + (Math.random()-0.5)*0.6); gm.visible = true; scrapItems.push({ mesh: gm, pos: gm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'glue' }); }
+          }
+          glueys.splice(glueys.indexOf(g), 1);
+        }
+        return true;
+      }
+
+      for (const c of cartolines) {
+        if (c.mesh !== hitMesh) continue;
+        const dx = c.x - px, dy = c.y - py, dz = c.z - pz;
+        if (dx * dx + dy * dy + dz * dz >= 25) return false;
+        const dmg = sel.type === 'wood_club' ? 5 : 2;
+        c.hp -= dmg; c.flashTimer = 0.5; c.mesh.material.color.setHex(0xff0000);
+        sel.durability[0]--;
+        if (sel.durability[0] <= 0) { sel.count--; sel.durability.shift(); if (sel.count <= 0) { sel.type = null; sel.durability = []; } }
+        updateSlot(selectedSlot);
+        if (c.hp <= 0) {
+          if (c.mesh) c.mesh.visible = false;
+          const scrapCount = 30 + Math.floor(Math.random() * 21);
+          for (let di = 0; di < scrapCount; di++) {
+            const sm = freePoolMesh(scrapPool);
+            if (sm) { sm.position.set(c.x + (Math.random()-0.5)*2, c.y + 0.5 + Math.random(), c.z + (Math.random()-0.5)*0.5); sm.visible = true; scrapItems.push({ mesh: sm, pos: sm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'scrap' }); }
+          }
+          const csm = freePoolMesh(cartScrapPool);
+          if (csm) { csm.position.set(c.x, c.y + 0.5, c.z); csm.visible = true; scrapItems.push({ mesh: csm, pos: csm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'cartolina' }); }
+          cartolines.splice(cartolines.indexOf(c), 1);
+        }
+        return true;
+      }
+      return false;
+    }
 
     renderer.domElement.addEventListener('mousedown', (e) => {
       if (e.button !== 0 || document.pointerLockElement !== renderer.domElement) return;
@@ -727,6 +784,7 @@
         tryThrowBall(sel.type);
         return;
       }
+      if (tryClubAttack() || (sel && sel.count > 0 && (sel.type === 'cardboard_club' || sel.type === 'wood_club'))) return;
       isBreaking = true;
       breakNeedsTarget = true;
     });
@@ -1038,7 +1096,7 @@
         tapTimer = setTimeout(() => {
           if (!tapMoved && blocker.style.display === 'none' && !isMaking) {
             const s = inventory[selectedSlot];
-            if (!s || s.count <= 0 || s.type !== 'attachable') {
+            if (!s || s.count <= 0 || (s.type !== 'attachable' && s.type !== 'cardboard_club' && s.type !== 'wood_club')) {
               tapHolding = true;
               isBreaking = true;
               breakNeedsTarget = true;
@@ -1067,7 +1125,7 @@
           const sel = inventory[selectedSlot];
           if (sel && sel.count > 0 && (sel.type === 'paper_ball' || sel.type === 'reinforced') && throwCooldown <= 0) {
             tryThrowBall(sel.type);
-          } else {
+          } else if (!tryClubAttack()) {
             tryPlaceBlock();
           }
         }
@@ -1183,7 +1241,7 @@
       img.src = srcMap[it.type] || './Paper Scrap.png';
       slot.appendChild(img);
       const label = document.createElement('div'); label.className = 'count';
-      label.textContent = (it.type === 'shield' || it.type === 'reinforced_shield') ? (it.durability[0] ?? '') : it.count;
+      label.textContent = (it.type === 'shield' || it.type === 'reinforced_shield' || it.type === 'cardboard_club' || it.type === 'wood_club') ? (it.durability[0] ?? '') : it.count;
       slot.appendChild(label);
     }
 
@@ -1197,10 +1255,12 @@
 
     function addToInventory(type) {
       for (let i = 0; i < inventory.length; i++) {
-        if (inventory[i].type === type && inventory[i].count > 0 && type !== 'shield' && type !== 'reinforced_shield') {
+        if (inventory[i].type === type && inventory[i].count > 0 && type !== 'shield' && type !== 'reinforced_shield' && type !== 'cardboard_club' && type !== 'wood_club') {
           inventory[i].count++;
           if (type === 'shield') inventory[i].durability.push(50);
           if (type === 'reinforced_shield') inventory[i].durability.push(250);
+          if (type === 'cardboard_club') inventory[i].durability.push(200);
+          if (type === 'wood_club') inventory[i].durability.push(1500);
           updateSlot(i); return true;
         }
       }
@@ -1209,6 +1269,8 @@
           inventory[i].type = type; inventory[i].count = 1; inventory[i].durability = [];
           if (type === 'shield') inventory[i].durability.push(50);
           if (type === 'reinforced_shield') inventory[i].durability.push(250);
+          if (type === 'cardboard_club') inventory[i].durability.push(200);
+          if (type === 'wood_club') inventory[i].durability.push(1500);
           updateSlot(i); return true;
         }
       }
@@ -1636,6 +1698,7 @@
             if (Math.abs(p.pos.x - g.x) < 0.6 && Math.abs(p.pos.z - g.z) < 0.6 && Math.abs(p.pos.y - g.y) < 1.1) {
               g.hp -= p.type === 'reinforced' ? 5 : 2;
               g.panicTimer = 10;
+              if (g.mesh) { g.flashTimer = 0.5; g.mesh.material.color.setHex(0xff0000); }
               p.mesh.visible = false;
               projectiles.splice(i, 1);
               if (g.hp <= 0) {
@@ -1659,6 +1722,7 @@
             const c = cartolines[ci];
             if (Math.abs(p.pos.x - c.x) < 1.0 && Math.abs(p.pos.z - c.z) < 0.2 && Math.abs(p.pos.y - c.y) < 1.1) {
               c.hp -= p.type === 'reinforced' ? 5 : 2;
+              if (c.mesh) { c.flashTimer = 0.5; c.mesh.material.color.setHex(0xff0000); }
               p.mesh.visible = false;
               projectiles.splice(i, 1);
               if (c.hp <= 0) {
@@ -1759,7 +1823,7 @@
           const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
           freeMesh.position.set(sx, sy + 0.75, sz);
           freeMesh.visible = true;
-          glueys.push({ x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh: freeMesh, hp: 5, panicTimer: 0 });
+          glueys.push({ x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh: freeMesh, hp: 5, panicTimer: 0, flashTimer: 0 });
         }
       }
       for (let gi = 0; gi < glueys.length; gi++) {
@@ -1769,6 +1833,10 @@
           if (g.mesh) g.mesh.visible = false;
           glueys.splice(gi, 1); gi--;
           continue;
+        }
+        if (g.flashTimer > 0) {
+          g.flashTimer -= dt;
+          if (g.flashTimer <= 0) { g.flashTimer = 0; if (g.mesh) g.mesh.material.color.setHex(0xffffff); }
         }
         if (g.panicTimer > 0) g.panicTimer -= dt;
         const speedMul = g.panicTimer > 0 ? 3 : 1;
@@ -1852,7 +1920,7 @@
           const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
           freeMesh.position.set(sx, sy + 0.9, sz);
           freeMesh.visible = true;
-          cartolines.push({ x: sx, y: sy + 0.9, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh: freeMesh, hp: 20, throwCooldown: Math.random() * 3 });
+          cartolines.push({ x: sx, y: sy + 0.9, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh: freeMesh, hp: 20, throwCooldown: Math.random() * 3, flashTimer: 0 });
         }
       }
       for (let ci = 0; ci < cartolines.length; ci++) {
@@ -1860,6 +1928,10 @@
         const cdx = playerBody.position.x - c.x, cdz = playerBody.position.z - c.z;
         const cdist2 = cdx * cdx + cdz * cdz;
         c.throwCooldown -= dt;
+        if (c.flashTimer > 0) {
+          c.flashTimer -= dt;
+          if (c.flashTimer <= 0) { c.flashTimer = 0; if (c.mesh) c.mesh.material.color.setHex(0xffffff); }
+        }
         c.moveTimer -= dt;
         if (c.moveTimer <= 0) {
           c.moveTimer = 1 + Math.random() * 2;

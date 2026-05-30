@@ -80,7 +80,7 @@
 </head>
 <body>
   <div id="blocker">
-    <h1>PAPERCORE 3D</h1>
+    <h1>PAPERCORE</h1>
     <button id="playBtn">PLAY</button>
     <div class="setting">
       <label for="wsInput">World Size (width-height-depth):</label>
@@ -1072,7 +1072,8 @@
       attachable:'./Attachable Paper Scrap.png', cartolina:'./Cartolina Scrap.png',
       shield:'./Paper Shield.png', reinforced_shield:'./Reinforced Paper Shield.png',
       paper_block:'./Paper Block.png', reinforced_block:'./Reinforced Paper Block.png',
-      waterball:'./Water Ball.png', water_block:'./Water Block.png'
+      waterball:'./Water Ball.png', water_block:'./Water Block.png',
+      paper:'./Paper.png'
     };
 
     function updateSlot(i) {
@@ -1142,6 +1143,7 @@
       { id: 'water_block', name: 'Water Block', result: 'water_block', resultImg: './Water Block.png', ingredients: [{ type: 'waterball', count: 4, img: './Water Ball.png' }] },
       { id: 'paper_ball', name: 'Paper Ball', result: 'paper_ball', resultImg: './Paper Ball.png', ingredients: [{ type: 'scrap', count: 4, img: './Paper Scrap.png' }] },
       { id: 'reinforced', name: 'Reinforced Paper Ball', result: 'reinforced', resultImg: './Reinforced Paper Ball.png', ingredients: [{ type: 'paper_ball', count: 2, img: './Paper Ball.png' }, { type: 'waterball', count: 2, img: './Water Ball.png' }] },
+      { id: 'paper', name: 'Paper', result: 'paper', resultImg: './Paper.png', ingredients: [{ type: 'scrap', count: 10, img: './Paper Scrap.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');

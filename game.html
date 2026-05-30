@@ -464,6 +464,20 @@
       scene.add(m);
       waterBallPool.push(m);
     }
+    const paperBallTex = new THREE.TextureLoader().load('./Paper Ball.png');
+    const paperBallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: paperBallTex, transparent: true });
+    const reinforcedBallTex = new THREE.TextureLoader().load('./Reinforced Paper Ball.png');
+    const reinforcedBallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: reinforcedBallTex, transparent: true });
+    const THROWN_POOL = 30;
+    const thrownPool = [];
+    for (let i = 0; i < THROWN_POOL; i++) {
+      const m = new THREE.Mesh(wbGeo, paperBallMat);
+      m.visible = false;
+      scene.add(m);
+      thrownPool.push(m);
+    }
+    const projectiles = [];
+    let throwCooldown = 0;
 
     function isSolidBlock(bx, bz, by) {
       if (by < 0 || by >= gridY) return false;
@@ -570,8 +584,30 @@
       breakMesh = null;
     }
 
+    function tryThrowBall(type) {
+      const sel = inventory[selectedSlot];
+      if (!sel || sel.count <= 0) return;
+      throwCooldown = 0.7;
+      removeItems(type, 1);
+      const mesh = freePoolMesh(thrownPool);
+      if (!mesh) return;
+      const speed = type === 'reinforced' ? 25 : 15;
+      const dir = new THREE.Vector3(0, 0, -1);
+      dir.applyQuaternion(camera.quaternion);
+      mesh.material = type === 'reinforced' ? reinforcedBallMat : paperBallMat;
+      mesh.position.copy(camera.position).add(dir.clone().multiplyScalar(1.5));
+      mesh.position.y -= 0.2;
+      mesh.visible = true;
+      projectiles.push({ mesh, vel: dir.multiplyScalar(speed), pos: mesh.position.clone(), life: 3 });
+    }
+
     renderer.domElement.addEventListener('mousedown', (e) => {
       if (e.button !== 0 || document.pointerLockElement !== renderer.domElement) return;
+      const sel = inventory[selectedSlot];
+      if (sel && sel.count > 0 && (sel.type === 'paper_ball' || sel.type === 'reinforced') && throwCooldown <= 0) {
+        tryThrowBall(sel.type);
+        return;
+      }
       isBreaking = true;
       breakNeedsTarget = true;
     });
@@ -886,7 +922,12 @@
         lookId = -1;
         if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
         if (!tapMoved && !tapHolding && (Date.now() - tapStart) < 400) {
-          tryPlaceBlock();
+          const sel = inventory[selectedSlot];
+          if (sel && sel.count > 0 && (sel.type === 'paper_ball' || sel.type === 'reinforced') && throwCooldown <= 0) {
+            tryThrowBall(sel.type);
+          } else {
+            tryPlaceBlock();
+          }
         }
         if (tapHolding && isBreaking) resetBreak();
       }, { passive: false });
@@ -1385,6 +1426,30 @@
           s.pickupTimer = 0;
         }
       }
+
+      for (let i = projectiles.length - 1; i >= 0; i--) {
+        const p = projectiles[i];
+        p.vel.y -= 20 * dt;
+        p.pos.x += p.vel.x * dt;
+        p.pos.y += p.vel.y * dt;
+        p.pos.z += p.vel.z * dt;
+        p.life -= dt;
+        if (p.life <= 0 || p.pos.y < -10) {
+          p.mesh.visible = false;
+          projectiles.splice(i, 1);
+          continue;
+        }
+        const bx = Math.floor(p.pos.x + halfX);
+        const bz = Math.floor(p.pos.z + halfZ);
+        const by = Math.floor(p.pos.y);
+        if (by >= 0 && by < gridY && isSolidBlock(bx, bz, by)) {
+          p.mesh.visible = false;
+          projectiles.splice(i, 1);
+          continue;
+        }
+        p.mesh.position.copy(p.pos);
+      }
+      if (throwCooldown > 0) throwCooldown -= dt;
 
       // Gluey system
       function glueyCollidesAt(gx, gy, gz) {

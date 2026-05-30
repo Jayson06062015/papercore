@@ -666,6 +666,7 @@
     });
     document.addEventListener('mouseup', (e) => {
       if (e.button === 0 && isBreaking) resetBreak();
+      if (e.button === 2) attachHealTimer = -1;
     });
     function tryPlaceBlock() {
       const sel = inventory[selectedSlot];
@@ -719,7 +720,14 @@
       }
     }
     renderer.domElement.addEventListener('mousedown', (e) => {
-      if (e.button === 2 && document.pointerLockElement === renderer.domElement) tryPlaceBlock();
+      if (e.button === 2 && document.pointerLockElement === renderer.domElement) {
+        const sel = inventory[selectedSlot];
+        if (sel && sel.count > 0 && sel.type === 'attachable') {
+          attachHealTimer = 0;
+        } else {
+          tryPlaceBlock();
+        }
+      }
     });
     renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -782,6 +790,7 @@
     let breakNeedsTarget = false;
     let breakDuration = 1;
     let breakMesh = null;
+    let attachHealTimer = -1;
     let velX = 0, velZ = 0;
     const white = new THREE.Color(0xffffff);
     const black = new THREE.Color(0x000000);
@@ -950,11 +959,18 @@
         tapMoved = false;
         tapHolding = false;
         if (tapTimer) clearTimeout(tapTimer);
+        const sel = inventory[selectedSlot];
+        if (sel && sel.count > 0 && sel.type === 'attachable') {
+          attachHealTimer = 0;
+        }
         tapTimer = setTimeout(() => {
           if (!tapMoved && blocker.style.display === 'none' && !isMaking) {
-            tapHolding = true;
-            isBreaking = true;
-            breakNeedsTarget = true;
+            const s = inventory[selectedSlot];
+            if (!s || s.count <= 0 || s.type !== 'attachable') {
+              tapHolding = true;
+              isBreaking = true;
+              breakNeedsTarget = true;
+            }
           }
         }, 400);
       }, { passive: false });
@@ -973,11 +989,16 @@
         const t = Array.from(e.changedTouches).find(tt => tt.identifier === lookId);
         if (!t) return;
         lookId = -1;
+        attachHealTimer = -1;
         if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
         if (!tapMoved && !tapHolding && (Date.now() - tapStart) < 400) {
           const sel = inventory[selectedSlot];
           if (sel && sel.count > 0 && (sel.type === 'paper_ball' || sel.type === 'reinforced') && throwCooldown <= 0) {
             tryThrowBall(sel.type);
+          } else if (sel && sel.count > 0 && sel.type === 'attachable') {
+            removeItems('attachable', 1);
+            playerHealth = Math.min(maxHealth, playerHealth + 2);
+            updateHealthDisplay();
           } else {
             tryPlaceBlock();
           }
@@ -1588,6 +1609,20 @@
         p.mesh.position.copy(p.pos);
       }
       if (throwCooldown > 0) throwCooldown -= dt;
+      if (attachHealTimer >= 0) {
+        const sel = inventory[selectedSlot];
+        if (!sel || sel.count <= 0 || sel.type !== 'attachable') {
+          attachHealTimer = -1;
+        } else {
+          attachHealTimer += dt;
+          if (attachHealTimer >= 1) {
+            attachHealTimer = -1;
+            playerHealth = Math.min(maxHealth, playerHealth + 2);
+            updateHealthDisplay();
+            removeItems('attachable', 1);
+          }
+        }
+      }
 
       // Gluey system
       function glueyCollidesAt(gx, gy, gz) {

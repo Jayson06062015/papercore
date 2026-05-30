@@ -724,9 +724,8 @@
       if (!sel || sel.count <= 0 || (sel.type !== 'cardboard_club' && sel.type !== 'wood_club')) return false;
       const dmg = sel.type === 'wood_club' ? 5 : 2;
       const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
-      const fx = Math.sin(yaw) * Math.cos(pitch);
-      const fy = -Math.sin(pitch);
-      const fz = Math.cos(yaw) * Math.cos(pitch);
+      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      const fx = fwd.x, fy = fwd.y, fz = fwd.z;
       const cosAng = 0.94;
 
       for (const g of glueys) {

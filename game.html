@@ -426,7 +426,7 @@
       const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
       const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
       const mesh = glueyMeshes[gi];
-      const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh };
+      const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 5 };
       if (mesh) { mesh.position.set(sx, sy + 0.75, sz); mesh.visible = true; }
       glueys.push(g);
     }
@@ -598,7 +598,7 @@
       mesh.position.copy(camera.position).add(dir.clone().multiplyScalar(1.5));
       mesh.position.y -= 0.2;
       mesh.visible = true;
-      projectiles.push({ mesh, vel: dir.multiplyScalar(speed), pos: mesh.position.clone(), life: 3 });
+      projectiles.push({ mesh, vel: dir.multiplyScalar(speed), pos: mesh.position.clone(), life: 3, type, traveled: 0 });
     }
 
     renderer.domElement.addEventListener('mousedown', (e) => {
@@ -1430,9 +1430,9 @@
       for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         p.vel.y -= 20 * dt;
-        p.pos.x += p.vel.x * dt;
-        p.pos.y += p.vel.y * dt;
-        p.pos.z += p.vel.z * dt;
+        const dx = p.vel.x * dt, dy = p.vel.y * dt, dz = p.vel.z * dt;
+        p.pos.x += dx; p.pos.y += dy; p.pos.z += dz;
+        p.traveled += Math.sqrt(dx*dx+dy*dy+dz*dz);
         p.life -= dt;
         if (p.life <= 0 || p.pos.y < -10) {
           p.mesh.visible = false;
@@ -1446,6 +1446,34 @@
           p.mesh.visible = false;
           projectiles.splice(i, 1);
           continue;
+        }
+        if (p.traveled > 2) {
+          const hx = playerBody.position.x, hy = playerBody.position.y, hz = playerBody.position.z;
+          if (Math.abs(p.pos.x - hx) < 0.55 && Math.abs(p.pos.y - hy) < 0.6 && Math.abs(p.pos.z - hz) < 0.2) {
+            const dmg = p.type === 'reinforced' ? 5 : 2;
+            playerHealth = Math.max(0, playerHealth - dmg);
+            updateHealthDisplay();
+            if (playerHealth <= 0) { isPaused = true; die(); }
+            p.mesh.visible = false;
+            projectiles.splice(i, 1);
+            continue;
+          }
+          let hit = false;
+          for (let gi = glueys.length - 1; gi >= 0; gi--) {
+            const g = glueys[gi];
+            if (Math.abs(p.pos.x - g.x) < 0.4 && Math.abs(p.pos.z - g.z) < 0.4 && Math.abs(p.pos.y - g.y) < 0.9) {
+              g.hp -= p.type === 'reinforced' ? 5 : 2;
+              p.mesh.visible = false;
+              projectiles.splice(i, 1);
+              if (g.hp <= 0) {
+                if (g.mesh) g.mesh.visible = false;
+                glueys.splice(gi, 1);
+              }
+              hit = true;
+              break;
+            }
+          }
+          if (hit) continue;
         }
         p.mesh.position.copy(p.pos);
       }

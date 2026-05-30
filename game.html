@@ -792,22 +792,14 @@
       }
     });
 
-    window.sensVal = 5;
-    const sse = document.getElementById('sensSlider');
-    const sve = document.getElementById('sensValue');
-    if (sse) {
-      sse.addEventListener('input', () => {
-        window.sensVal = parseFloat(sse.value);
-        if (sve) sve.textContent = sse.value;
-      });
-      sse.addEventListener('change', () => {
-        window.sensVal = parseFloat(sse.value);
-        if (sve) sve.textContent = sse.value;
-      });
-    }
+    const sve = document.querySelector('#sensValue');
+    document.querySelector('#sensSlider')?.addEventListener('input', () => {
+      if (sve) sve.textContent = document.querySelector('#sensSlider').value;
+    });
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== renderer.domElement) return;
-      const s = (window.sensVal || 5) * 0.0004;
+      const el = document.querySelector('#sensSlider');
+      const s = (el ? parseFloat(el.value) : 5) * 0.0004;
       yaw -= e.movementX * s;
       pitch -= e.movementY * s;
       const pitchLimit = thirdPerson ? Math.PI/4 : Math.PI/2;

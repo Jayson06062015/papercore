@@ -1470,32 +1470,32 @@
             projectiles.splice(i, 1);
             continue;
           }
-          let hit = false;
-          for (let gi = glueys.length - 1; gi >= 0; gi--) {
-            const g = glueys[gi];
-            if (Math.abs(p.pos.x - g.x) < 0.4 && Math.abs(p.pos.z - g.z) < 0.4 && Math.abs(p.pos.y - g.y) < 0.9) {
-              g.hp -= p.type === 'reinforced' ? 5 : 2;
-              g.panicTimer = 10;
-              p.mesh.visible = false;
-              projectiles.splice(i, 1);
-              if (g.hp <= 0) {
-                if (g.mesh) g.mesh.visible = false;
-                for (let di = 0; di < 2 + Math.floor(Math.random() * 2); di++) {
-                  const gm = freePoolMesh(glueDropPool);
-                  if (gm) {
-                    gm.position.set(g.x + (Math.random()-0.5)*0.6, g.y + 0.5, g.z + (Math.random()-0.5)*0.6);
-                    gm.visible = true;
-                    scrapItems.push({ mesh: gm, pos: gm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'glue' });
-                  }
-                }
-                glueys.splice(gi, 1);
-              }
-              hit = true;
-              break;
-            }
-          }
-          if (hit) continue;
         }
+        let hit = false;
+        for (let gi = glueys.length - 1; gi >= 0; gi--) {
+          const g = glueys[gi];
+          if (Math.abs(p.pos.x - g.x) < 0.6 && Math.abs(p.pos.z - g.z) < 0.6 && Math.abs(p.pos.y - g.y) < 1.1) {
+            g.hp -= p.type === 'reinforced' ? 5 : 2;
+            g.panicTimer = 10;
+            p.mesh.visible = false;
+            projectiles.splice(i, 1);
+            if (g.hp <= 0) {
+              if (g.mesh) g.mesh.visible = false;
+              for (let di = 0; di < 2 + Math.floor(Math.random() * 2); di++) {
+                const gm = freePoolMesh(glueDropPool);
+                if (gm) {
+                  gm.position.set(g.x + (Math.random()-0.5)*0.6, g.y + 0.5, g.z + (Math.random()-0.5)*0.6);
+                  gm.visible = true;
+                  scrapItems.push({ mesh: gm, pos: gm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'glue' });
+                }
+              }
+              glueys.splice(gi, 1);
+            }
+            hit = true;
+            break;
+          }
+        }
+        if (hit) continue;
         p.mesh.position.copy(p.pos);
       }
       if (throwCooldown > 0) throwCooldown -= dt;

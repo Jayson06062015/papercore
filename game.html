@@ -28,23 +28,23 @@
     #health-bar .hp-bg { width:120px; height:12px; background:rgba(0,0,0,0.4); border-radius:6px; overflow:hidden; border:1px solid rgba(255,255,255,0.2); }
     #health-bar .hp-fill { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:6px; transition: none !important; }
     #inventory { position:fixed; bottom:15px; left:50%; transform:translateX(-50%); display:none; gap:6px; z-index:20; }
-    #crafting { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:30; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
-    #crafting .window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:24px; min-width:340px; box-shadow:0 0 40px rgba(139,92,246,0.3); }
-    #crafting h2 { margin:0 0 16px; font-size:24px; color:#4c1d95; text-align:center; font-weight:900; }
-    #crafting .grid { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
-    #crafting .card { width:90px; padding:10px 6px; background:rgba(255,255,255,0.7); border:2px solid #ddd6fe; border-radius:10px; cursor:pointer; text-align:center; transition:0.15s; box-sizing:border-box; }
-    #crafting .card:hover { border-color:#8b5cf6; }
-    #crafting .card.selected { border-color:#6d28d9; background:#ede9fe; box-shadow:0 0 8px rgba(109,40,217,0.25); }
-    #crafting .card img { width:36px; height:36px; object-fit:contain; display:block; margin:0 auto 4px; }
-    #crafting .card .name { font-size:11px; font-weight:700; color:#4c1d95; }
-    #crafting .card .cost { font-size:10px; color:#6b7280; margin-top:2px; }
-    #crafting .card .cost img { width:12px; height:12px; display:inline; vertical-align:middle; margin:0 1px; }
-    #crafting .footer { display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:12px; border-top:1px solid #ddd6fe; }
-    #crafting .footer .hint { font-size:12px; color:#6b7280; }
-    #crafting .footer button { padding:10px 28px; font-size:15px; font-weight:700; border:2px solid #6d28d9; background:#8b5cf6; color:#fff; border-radius:8px; cursor:pointer; font-family:"Poppins",sans-serif; transition:0.15s; }
-    #crafting .footer button:hover { background:#7c3aed; transform:translateY(-1px); }
-    #crafting .footer button:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
-    #crafting .close-hint { text-align:center; color:#6b7280; font-size:12px; margin-top:10px; }
+    #making { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:30; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
+    #making .window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:24px; min-width:340px; box-shadow:0 0 40px rgba(139,92,246,0.3); }
+    #making h2 { margin:0 0 16px; font-size:24px; color:#4c1d95; text-align:center; font-weight:900; }
+    #making .grid { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+    #making .card { width:90px; padding:10px 6px; background:rgba(255,255,255,0.7); border:2px solid #ddd6fe; border-radius:10px; cursor:pointer; text-align:center; transition:0.15s; box-sizing:border-box; }
+    #making .card:hover { border-color:#8b5cf6; }
+    #making .card.selected { border-color:#6d28d9; background:#ede9fe; box-shadow:0 0 8px rgba(109,40,217,0.25); }
+    #making .card img { width:36px; height:36px; object-fit:contain; display:block; margin:0 auto 4px; }
+    #making .card .name { font-size:11px; font-weight:700; color:#4c1d95; }
+    #making .card .cost { font-size:10px; color:#6b7280; margin-top:2px; }
+    #making .card .cost img { width:12px; height:12px; display:inline; vertical-align:middle; margin:0 1px; }
+    #making .footer { display:flex; align-items:center; justify-content:space-between; margin-top:14px; padding-top:12px; border-top:1px solid #ddd6fe; }
+    #making .footer .hint { font-size:12px; color:#6b7280; }
+    #making .footer button { padding:10px 28px; font-size:15px; font-weight:700; border:2px solid #6d28d9; background:#8b5cf6; color:#fff; border-radius:8px; cursor:pointer; font-family:"Poppins",sans-serif; transition:0.15s; }
+    #making .footer button:hover { background:#7c3aed; transform:translateY(-1px); }
+    #making .footer button:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+    #making .close-hint { text-align:center; color:#6b7280; font-size:12px; margin-top:10px; }
     .slot { width:50px; height:50px; border:2px solid #555; background:rgba(200,200,200,0.6); border-radius:10px; display:flex; align-items:center; justify-content:center; position:relative; backdrop-filter:blur(2px); }
     .slot.selected { border-color:#fff; background:rgba(255,255,255,0.8); }
     .item-img { width:36px; height:36px; object-fit:contain; }
@@ -62,7 +62,7 @@
     .mb { position:absolute; padding:8px 12px; font-size:12px; font-weight:700; border:2px solid rgba(255,255,255,0.4); border-radius:10px; background:rgba(255,255,255,0.2); color:#fff; font-family:"Poppins",sans-serif; user-select:none; -webkit-user-select:none; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
     .mb:active { background:rgba(255,255,255,0.45); }
     #btn-jump { right:18px; bottom:70px; border-radius:50%; width:56px; height:56px; display:flex; align-items:center; justify-content:center; font-size:14px; }
-    #btn-craft { right:18px; top:16px; }
+    #btn-make { right:18px; top:16px; }
     #btn-pause { right:18px; top:76px; font-size:11px; padding:6px 10px; }
     #btn-tp { right:18px; top:132px; font-size:11px; padding:6px 10px; }
     #btn-break, #btn-place { display:none; }
@@ -119,7 +119,7 @@
     <button class="mb" id="btn-jump">JUMP</button>
     <button class="mb" id="btn-break" style="display:none">BREAK</button>
     <button class="mb" id="btn-place" style="display:none">PLACE</button>
-    <button class="mb" id="btn-craft">CRAFT</button>
+    <button class="mb" id="btn-make">MAKE</button>
     <button class="mb" id="btn-pause">PAUSE</button>
     <button class="mb" id="btn-tp">TP</button>
   </div>
@@ -150,13 +150,13 @@
     </div>
   </div>
 
-  <div id="crafting">
+  <div id="making">
     <div class="window">
       <h2>MAKING</h2>
       <div class="grid" id="recipeGrid"></div>
       <div class="footer">
         <span class="hint" id="selectedHint">Select a recipe</span>
-        <button id="craftBtn" disabled>Make</button>
+        <button id="makeBtn" disabled>Make</button>
       </div>
       <div class="close-hint">Press <b>E</b> or tap outside to close</div>
     </div>
@@ -662,7 +662,7 @@
       document.getElementById('crosshair').style.display = 'none';
       document.getElementById('health-bar').style.display = 'none';
       document.getElementById('inventory').style.display = 'none';
-      document.getElementById('crafting').style.display = 'none';
+      document.getElementById('making').style.display = 'none';
       if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
     }
     function respawn() {
@@ -683,7 +683,7 @@
       }
     }
     let thirdPerson = false;
-    let isCrafting = false;
+    let isMaking = false;
     let isBreaking = false;
     let isPaused = false;
     let gameStarted = false;
@@ -765,8 +765,8 @@
         document.getElementById('crosshair').style.display = 'block';
         fpsEl.style.display = 'block';
         document.getElementById('health-bar').style.display = 'flex';
-        document.getElementById('inventory').style.display = isCrafting ? 'flex' : 'flex';
-      } else if (isCrafting) {
+        document.getElementById('inventory').style.display = isMaking ? 'flex' : 'flex';
+      } else if (isMaking) {
         pauseOverlay.style.display = 'none';
         blocker.style.display = 'none';
         document.getElementById('crosshair').style.display = 'none';
@@ -817,14 +817,14 @@
       if (e.code === 'KeyV') { thirdPerson = !thirdPerson; playerBody.visible = thirdPerson; }
       if (e.code === 'KeyE') {
         e.preventDefault();
-        isCrafting = !isCrafting;
-        if (isCrafting) {
-          document.getElementById('crafting').style.display = 'flex';
+        isMaking = !isMaking;
+        if (isMaking) {
+          document.getElementById('making').style.display = 'flex';
           blocker.style.display = 'none';
-          updateCraftButtons();
+          updateMakeButtons();
           document.exitPointerLock();
         } else {
-          document.getElementById('crafting').style.display = 'none';
+          document.getElementById('making').style.display = 'none';
           if (document.pointerLockElement !== renderer.domElement) {
             blocker.style.display = 'flex';
           }
@@ -862,7 +862,7 @@
         tapHolding = false;
         if (tapTimer) clearTimeout(tapTimer);
         tapTimer = setTimeout(() => {
-          if (!tapMoved && blocker.style.display === 'none' && !isCrafting) {
+          if (!tapMoved && blocker.style.display === 'none' && !isMaking) {
             tapHolding = true;
             isBreaking = true;
             breakNeedsTarget = true;
@@ -894,11 +894,11 @@
       document.getElementById('btn-jump').addEventListener('touchstart', (e) => { e.preventDefault(); keys['Space'] = true; }, { passive: false });
       document.getElementById('btn-jump').addEventListener('touchend', (e) => { e.preventDefault(); keys['Space'] = false; }, { passive: false });
 
-      document.getElementById('btn-craft').addEventListener('touchstart', (e) => {
+      document.getElementById('btn-make').addEventListener('touchstart', (e) => {
         e.preventDefault();
-        isCrafting = !isCrafting;
-        if (isCrafting) { document.getElementById('crafting').style.display = 'flex'; mc.style.display = 'block'; updateCraftButtons(); }
-        else { document.getElementById('crafting').style.display = 'none'; }
+        isMaking = !isMaking;
+        if (isMaking) { document.getElementById('making').style.display = 'flex'; mc.style.display = 'block'; updateMakeButtons(); }
+        else { document.getElementById('making').style.display = 'none'; }
       });
 
       for (let i = 1; i <= 8; i++) {
@@ -955,16 +955,16 @@
       window.location.href = 'index.html';
     }, { passive: false });
 
-    document.getElementById('crafting').addEventListener('click', (e) => {
+    document.getElementById('making').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) {
-        isCrafting = false;
-        document.getElementById('crafting').style.display = 'none';
+        isMaking = false;
+        document.getElementById('making').style.display = 'none';
       }
     });
-    document.getElementById('crafting').addEventListener('touchstart', (e) => {
+    document.getElementById('making').addEventListener('touchstart', (e) => {
       if (e.target === e.currentTarget) {
-        isCrafting = false;
-        document.getElementById('crafting').style.display = 'none';
+        isMaking = false;
+        document.getElementById('making').style.display = 'none';
       }
     });
 
@@ -1052,10 +1052,11 @@
       { id: 'paper_block', name: 'Paper Block', result: 'paper_block', resultImg: './Paper Block.png', ingredients: [{ type: 'scrap', count: 8, img: './Paper Scrap.png' }] },
       { id: 'water_block', name: 'Water Block', result: 'water_block', resultImg: './Water Block.png', ingredients: [{ type: 'waterball', count: 4, img: './Water Ball.png' }] },
       { id: 'paper_ball', name: 'Paper Ball', result: 'paper_ball', resultImg: './Paper Ball.png', ingredients: [{ type: 'scrap', count: 4, img: './Paper Scrap.png' }] },
+      { id: 'reinforced', name: 'Reinforced Paper Ball', result: 'reinforced', resultImg: './Reinforced Paper Ball.png', ingredients: [{ type: 'paper_ball', count: 2, img: './Paper Ball.png' }, { type: 'waterball', count: 2, img: './Water Ball.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');
-    const craftBtn = document.getElementById('craftBtn');
+    const makeBtn = document.getElementById('makeBtn');
     const selectedHint = document.getElementById('selectedHint');
 
     function buildRecipeGrid() {
@@ -1070,19 +1071,19 @@
           document.querySelectorAll('#recipeGrid .card').forEach(c => c.classList.remove('selected'));
           card.classList.add('selected');
           selectedRecipe = r.id;
-          updateCraftButtons();
+          updateMakeButtons();
     });
 
-    document.getElementById('crafting').addEventListener('click', (e) => {
+    document.getElementById('making').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) {
-        isCrafting = false;
-        document.getElementById('crafting').style.display = 'none';
+        isMaking = false;
+        document.getElementById('making').style.display = 'none';
       }
     });
-    document.getElementById('crafting').addEventListener('touchstart', (e) => {
+    document.getElementById('making').addEventListener('touchstart', (e) => {
       if (e.target === e.currentTarget) {
-        isCrafting = false;
-        document.getElementById('crafting').style.display = 'none';
+        isMaking = false;
+        document.getElementById('making').style.display = 'none';
       }
     }, { passive: false });
         recipeGrid.appendChild(card);
@@ -1095,27 +1096,27 @@
       return r.ingredients.every(i => countItem(i.type) >= i.count);
     }
 
-    function updateCraftButtons() {
+    function updateMakeButtons() {
       if (!selectedRecipe) {
-        craftBtn.disabled = true;
+        makeBtn.disabled = true;
         selectedHint.textContent = 'Select a recipe to make';
         return;
       }
       const canAfford = canAffordRecipe(selectedRecipe);
-      craftBtn.disabled = !canAfford;
+      makeBtn.disabled = !canAfford;
       selectedHint.textContent = canAfford ? 'Ready to make' : 'Not enough materials';
     }
 
     buildRecipeGrid();
 
-    craftBtn.addEventListener('click', () => {
+    makeBtn.addEventListener('click', () => {
       if (!selectedRecipe || !canAffordRecipe(selectedRecipe)) return;
       const r = recipes.find(x => x.id === selectedRecipe);
       for (const ing of r.ingredients) {
         removeItems(ing.type, ing.count);
       }
       addToInventory(r.result);
-      updateCraftButtons();
+      updateMakeButtons();
     });
 
     const clock = new THREE.Clock();

@@ -1157,7 +1157,9 @@
       waterball:'./Water Ball.png', water_block:'./Water Block.png',
       paper:'./Paper.png',
       cardboard:'./Cardboard.png',
-      wood_plank:'./Wood Plank.png'
+      wood_plank:'./Wood Plank.png',
+      cardboard_club:'./Cardboard Club.png',
+      wood_club:'./Wood Club.png'
     };
 
     function updateSlot(i) {
@@ -1246,6 +1248,8 @@
       { id: 'shield', name: 'Paper Shield', result: 'shield', resultImg: './Paper Shield.png', ingredients: [{ type: 'paper', count: 4, img: './Paper.png' }, { type: 'cartolina', count: 1, img: './Cartolina Scrap.png' }] },
       { id: 'reinforced_shield', name: 'Reinforced Paper Shield', result: 'reinforced_shield', resultImg: './Reinforced Paper Shield.png', ingredients: [{ type: 'paper', count: 8, img: './Paper.png' }, { type: 'waterball', count: 4, img: './Water Ball.png' }, { type: 'cartolina', count: 2, img: './Cartolina Scrap.png' }] },
       { id: 'attachable', name: 'Attachable Paper Scrap', result: 'attachable', resultImg: './Attachable Paper Scrap.png', ingredients: [{ type: 'glue', count: 1, img: './Glue.png' }, { type: 'scrap', count: 1, img: './Paper Scrap.png' }] },
+      { id: 'cardboard_club', name: 'Cardboard Club', result: 'cardboard_club', resultImg: './Cardboard Club.png', ingredients: [{ type: 'cardboard', count: 3, img: './Cardboard.png' }] },
+      { id: 'wood_club', name: 'Wood Club', result: 'wood_club', resultImg: './Wood Club.png', ingredients: [{ type: 'wood_plank', count: 3, img: './Wood Plank.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');

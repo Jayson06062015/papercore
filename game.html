@@ -818,51 +818,53 @@
       setTimeout(() => n.style.display = 'none', 2000);
     }
     function loadGame() {
-      const raw = localStorage.getItem('papercore_save_v1');
-      if (!raw) return false;
-      const data = JSON.parse(raw);
-      for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
-      glueys.length = 0;
-      for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
-      cartolines.length = 0;
-      for (const [key, c] of loadedChunks) {
-        if (c.mesh) scene.remove(c.mesh);
-        if (c.waterMesh) scene.remove(c.waterMesh);
-        if (c.woodMesh) scene.remove(c.woodMesh);
-        if (c.reinfMesh) scene.remove(c.reinfMesh);
-      }
-      loadedChunks.clear();
-      chunkBuildQueue.length = 0;
-      visibleMeshes.length = 0;
-      for (const cd of data.chunks) {
-        const chunk = ensureChunkSync(cd.cx, cd.cz, cd.cy);
-        chunk.sy = cd.sy;
-        chunk.states = new Uint8Array(cd.states);
-        chunkBuildQueue.push(chunk.key);
-      }
-      playerBody.position.set(data.player.x, data.player.y, data.player.z);
-      playerHealth = data.player.health;
-      yaw = data.player.yaw;
-      pitch = data.player.pitch;
-      for (let i = 0; i < inventory.length; i++) {
-        const s = (data.player.inventory && data.player.inventory[i]) || {};
-        inventory[i].type = s.type || null;
-        inventory[i].count = s.count || 0;
-        inventory[i].durability = (s.durability && [...s.durability]) || [];
-      }
-      selectedSlot = data.player.selectedSlot;
-      updateInventoryUI();
-      for (let i = 0; i < inventory.length; i++) updateSlot(i);
-      updateHealthDisplay();
-      for (const gd of data.glueys) {
-        const mesh = glueyMeshes.find(m => !m.visible);
-        if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(gd.x, gd.y, gd.z); mesh.visible = true; glueys.push({ ...gd, mesh, flashTimer: 0 }); }
-      }
-      for (const cd of data.cartolines) {
-        const mesh = cartolineMeshes.find(m => !m.visible);
-        if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(cd.x, cd.y, cd.z); mesh.visible = true; cartolines.push({ ...cd, mesh, flashTimer: 0 }); }
-      }
-      return true;
+      try {
+        const raw = localStorage.getItem('papercore_save_v1');
+        if (!raw) return false;
+        const data = JSON.parse(raw);
+        for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
+        glueys.length = 0;
+        for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
+        cartolines.length = 0;
+        for (const [key, c] of loadedChunks) {
+          if (c.mesh) scene.remove(c.mesh);
+          if (c.waterMesh) scene.remove(c.waterMesh);
+          if (c.woodMesh) scene.remove(c.woodMesh);
+          if (c.reinfMesh) scene.remove(c.reinfMesh);
+        }
+        loadedChunks.clear();
+        chunkBuildQueue.length = 0;
+        visibleMeshes.length = 0;
+        for (const cd of data.chunks) {
+          const chunk = ensureChunkSync(cd.cx, cd.cz, cd.cy);
+          chunk.sy = cd.sy;
+          chunk.states = new Uint8Array(cd.states);
+          chunkBuildQueue.push(chunk.key);
+        }
+        playerBody.position.set(data.player.x, data.player.y, data.player.z);
+        playerHealth = data.player.health;
+        yaw = data.player.yaw;
+        pitch = data.player.pitch;
+        for (let i = 0; i < inventory.length; i++) {
+          const s = (data.player.inventory && data.player.inventory[i]) || {};
+          inventory[i].type = s.type || null;
+          inventory[i].count = s.count || 0;
+          inventory[i].durability = (s.durability && [...s.durability]) || [];
+        }
+        selectedSlot = data.player.selectedSlot;
+        updateInventoryUI();
+        for (let i = 0; i < inventory.length; i++) updateSlot(i);
+        updateHealthDisplay();
+        for (const gd of data.glueys) {
+          const mesh = glueyMeshes.find(m => !m.visible);
+          if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(gd.x, gd.y, gd.z); mesh.visible = true; glueys.push({ ...gd, mesh, flashTimer: 0 }); }
+        }
+        for (const cd of data.cartolines) {
+          const mesh = cartolineMeshes.find(m => !m.visible);
+          if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(cd.x, cd.y, cd.z); mesh.visible = true; cartolines.push({ ...cd, mesh, flashTimer: 0 }); }
+        }
+        return true;
+      } catch(e) { return false; }
     }
     function tryPlaceBlock() {
       const sel = inventory[selectedSlot];

@@ -844,7 +844,12 @@
       playerHealth = data.player.health;
       yaw = data.player.yaw;
       pitch = data.player.pitch;
-      inventory = data.player.inventory;
+      for (let i = 0; i < inventory.length; i++) {
+        const s = (data.player.inventory && data.player.inventory[i]) || {};
+        inventory[i].type = s.type || null;
+        inventory[i].count = s.count || 0;
+        inventory[i].durability = (s.durability && [...s.durability]) || [];
+      }
       selectedSlot = data.player.selectedSlot;
       updateInventoryUI();
       for (let i = 0; i < inventory.length; i++) updateSlot(i);

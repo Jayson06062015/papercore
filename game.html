@@ -473,7 +473,7 @@
       scene.add(m);
       glueyMeshes.push(m);
     }
-    const glueys = [];
+    let glueys = [];
     let glueySpawnTimer = 0;
     for (let gi = 0; gi < 15; gi++) {
       const a = Math.random() * Math.PI * 2;
@@ -498,7 +498,7 @@
       scene.add(m);
       cartolineMeshes.push(m);
     }
-    const cartolines = [];
+    let cartolines = [];
     let cartolineSpawnTimer = 0;
     for (let ci = 0; ci < 3; ci++) {
       const a = Math.random() * Math.PI * 2;
@@ -823,9 +823,7 @@
         if (!raw) return false;
         const data = JSON.parse(raw);
         for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
-        glueys.length = 0;
         for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
-        cartolines.length = 0;
         for (const [key, c] of loadedChunks) {
           if (c.mesh) scene.remove(c.mesh);
           if (c.waterMesh) scene.remove(c.waterMesh);
@@ -837,32 +835,27 @@
         visibleMeshes.length = 0;
         for (const cd of data.chunks) {
           const chunk = ensureChunkSync(cd.cx, cd.cz, cd.cy);
-          chunk.sy = cd.sy;
-          chunk.states = new Uint8Array(cd.states);
-          chunkBuildQueue.push(chunk.key);
+          if (chunk) { chunk.sy = cd.sy; chunk.states = new Uint8Array(cd.states); chunkBuildQueue.push(chunk.key); }
         }
         playerBody.position.set(data.player.x, data.player.y, data.player.z);
         playerHealth = data.player.health;
         yaw = data.player.yaw;
         pitch = data.player.pitch;
-        for (let i = 0; i < inventory.length; i++) {
-          const s = (data.player.inventory && data.player.inventory[i]) || {};
-          inventory[i].type = s.type || null;
-          inventory[i].count = s.count || 0;
-          inventory[i].durability = (s.durability && [...s.durability]) || [];
-        }
+        inventory = data.player.inventory.map(s => ({ type: s.type, count: s.count, durability: [...(s.durability||[])] }));
         selectedSlot = data.player.selectedSlot;
+        glueys = data.glueys.map(gd => {
+          const mesh = glueyMeshes.find(m => !m.visible);
+          if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(gd.x, gd.y, gd.z); mesh.visible = true; }
+          return { ...gd, mesh: mesh || null, flashTimer: 0 };
+        });
+        cartolines = data.cartolines.map(cd => {
+          const mesh = cartolineMeshes.find(m => !m.visible);
+          if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(cd.x, cd.y, cd.z); mesh.visible = true; }
+          return { ...cd, mesh: mesh || null, flashTimer: 0 };
+        });
         updateInventoryUI();
         for (let i = 0; i < inventory.length; i++) updateSlot(i);
         updateHealthDisplay();
-        for (const gd of data.glueys) {
-          const mesh = glueyMeshes.find(m => !m.visible);
-          if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(gd.x, gd.y, gd.z); mesh.visible = true; glueys.push({ ...gd, mesh, flashTimer: 0 }); }
-        }
-        for (const cd of data.cartolines) {
-          const mesh = cartolineMeshes.find(m => !m.visible);
-          if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(cd.x, cd.y, cd.z); mesh.visible = true; cartolines.push({ ...cd, mesh, flashTimer: 0 }); }
-        }
         return true;
       } catch(e) { return false; }
     }
@@ -1291,7 +1284,7 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    const inventory = Array.from({ length: 8 }, () => ({ type: null, count: 0, durability: [] }));
+    let inventory = Array.from({ length: 8 }, () => ({ type: null, count: 0, durability: [] }));
     let selectedSlot = 0;
     const srcMap = {
       water:'./Water Ball.png',       paperball:'./Paper Ball.png', paper_ball:'./Paper Ball.png',

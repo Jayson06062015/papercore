@@ -143,9 +143,12 @@
         <span id="sensValue">5</span>
       </div>
       <button id="btn-resume">RESUME</button>
+      <button id="btn-save">SAVE GAME</button>
       <button id="btn-back-menu">BACK TO MENU</button>
     </div>
   </div>
+
+  <div id="save-notice" style="position:fixed;bottom:60px;left:50%;transform:translateX(-50%);z-index:100;background:#166534;color:#fff;padding:10px 24px;border-radius:8px;font-weight:700;font-size:16px;font-family:'Poppins',sans-serif;display:none;pointer-events:none;">Game Saved!</div>
 
   <div id="death-overlay">
     <div class="death-window">
@@ -794,6 +797,68 @@
       if (e.button === 0 && isBreaking) resetBreak();
       if (e.button === 2) attachHealTimer = -1;
     });
+    function saveGame() {
+      const data = {
+        player: {
+          x: playerBody.position.x, y: playerBody.position.y, z: playerBody.position.z,
+          health: playerHealth, yaw, pitch,
+          inventory: inventory.map(s => ({ type: s.type, count: s.count, durability: [...s.durability] })),
+          selectedSlot
+        },
+        chunks: [],
+        glueys: glueys.map(g => ({ x: g.x, y: g.y, z: g.z, vy: g.vy, onGround: g.onGround, moveTimer: g.moveTimer, dirX: g.dirX, dirZ: g.dirZ, hp: g.hp, panicTimer: g.panicTimer })),
+        cartolines: cartolines.map(c => ({ x: c.x, y: c.y, z: c.z, vy: c.vy, onGround: c.onGround, moveTimer: c.moveTimer, dirX: c.dirX, dirZ: c.dirZ, hp: c.hp, throwCooldown: c.throwCooldown }))
+      };
+      for (const chunk of loadedChunks.values()) {
+        data.chunks.push({ cx: chunk.cx, cy: chunk.cy, cz: chunk.cz, sy: chunk.sy, states: Array.from(chunk.states) });
+      }
+      localStorage.setItem('papercore_save_v1', JSON.stringify(data));
+      const n = document.getElementById('save-notice');
+      n.style.display = 'block';
+      setTimeout(() => n.style.display = 'none', 2000);
+    }
+    function loadGame() {
+      const raw = localStorage.getItem('papercore_save_v1');
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
+      glueys.length = 0;
+      for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
+      cartolines.length = 0;
+      for (const [key, c] of loadedChunks) {
+        if (c.mesh) scene.remove(c.mesh);
+        if (c.waterMesh) scene.remove(c.waterMesh);
+        if (c.woodMesh) scene.remove(c.woodMesh);
+        if (c.reinfMesh) scene.remove(c.reinfMesh);
+      }
+      loadedChunks.clear();
+      chunkBuildQueue.length = 0;
+      visibleMeshes.length = 0;
+      for (const cd of data.chunks) {
+        const chunk = ensureChunkSync(cd.cx, cd.cz, cd.cy);
+        chunk.sy = cd.sy;
+        chunk.states = new Uint8Array(cd.states);
+        chunkBuildQueue.push(chunk.key);
+      }
+      playerBody.position.set(data.player.x, data.player.y, data.player.z);
+      playerHealth = data.player.health;
+      yaw = data.player.yaw;
+      pitch = data.player.pitch;
+      inventory = data.player.inventory;
+      selectedSlot = data.player.selectedSlot;
+      updateInventoryUI();
+      for (let i = 0; i < inventory.length; i++) updateSlot(i);
+      updateHealthDisplay();
+      for (const gd of data.glueys) {
+        const mesh = glueyMeshes.find(m => !m.visible);
+        if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(gd.x, gd.y, gd.z); mesh.visible = true; glueys.push({ ...gd, mesh, flashTimer: 0 }); }
+      }
+      for (const cd of data.cartolines) {
+        const mesh = cartolineMeshes.find(m => !m.visible);
+        if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(cd.x, cd.y, cd.z); mesh.visible = true; cartolines.push({ ...cd, mesh, flashTimer: 0 }); }
+      }
+      return true;
+    }
     function tryPlaceBlock() {
       const sel = inventory[selectedSlot];
       if (!sel || sel.count <= 0) return;
@@ -1173,6 +1238,8 @@
       if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
       window.location.href = 'index.html';
     });
+    document.getElementById('btn-save').addEventListener('click', saveGame);
+    document.getElementById('btn-save').addEventListener('touchstart', (e) => { e.preventDefault(); saveGame(); }, { passive: false });
     document.getElementById('btn-resume').addEventListener('touchstart', (e) => {
       e.preventDefault();
       isPaused = false;
@@ -1919,7 +1986,7 @@
         if (freeMesh) {
           const a = Math.random() * Math.PI * 2;
           const d = 10 + Math.random() * 30;
-          const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
+          const sx = playerBody.position.x + Math.cos(a) * d, sz = playerBody.position.z + Math.sin(a) * d;
           const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
           freeMesh.material.color.setHex(0xffffff);
           freeMesh.position.set(sx, sy + 0.9, sz);
@@ -1931,6 +1998,11 @@
         const c = cartolines[ci];
         const cdx = playerBody.position.x - c.x, cdz = playerBody.position.z - c.z;
         const cdist2 = cdx * cdx + cdz * cdz;
+        if (cdist2 > 1600) {
+          if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; }
+          cartolines.splice(ci, 1); ci--;
+          continue;
+        }
         c.throwCooldown -= dt;
         if (c.flashTimer > 0) {
           c.flashTimer -= dt;
@@ -2148,6 +2220,10 @@
       dir.target.updateMatrixWorld();
 
       renderer.render(scene, camera);
+    }
+
+    if (new URLSearchParams(location.search).get('mode') === 'load') {
+      loadGame();
     }
 
     animate();

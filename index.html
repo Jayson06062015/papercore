@@ -24,8 +24,10 @@
     <button class="btn" onclick="window.location.href='updates.html'">UPDATE LOG</button>
   </div>
   <script>
+    const loadBtn = document.getElementById('loadBtn');
     if(localStorage.getItem('papercore_save_v1') === null) {
-      document.getElementById('loadBtn').title = "No save file found. Save in-game first.";
+      loadBtn.disabled = true;
+      loadBtn.title = "No save file found. Save in-game first.";
     }
   </script>
 </body>

@@ -577,6 +577,16 @@
       scene.add(m);
       cartScrapPool.push(m);
     }
+    const woodDropMat = new THREE.MeshStandardMaterial({ map: woodTex, transparent: true });
+    const woodDropGeo = new THREE.BoxGeometry(0.3, 0.08, 0.3);
+    const WOOD_DROP_POOL = 40;
+    const woodDropPool = [];
+    for (let i = 0; i < WOOD_DROP_POOL; i++) {
+      const m = new THREE.Mesh(woodDropGeo, woodDropMat);
+      m.visible = false;
+      scene.add(m);
+      woodDropPool.push(m);
+    }
 
     function isSolidBlock(bx, bz, by) {
       if (by < 0 || by >= gridY) return false;
@@ -636,18 +646,20 @@
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'waterball' });
         }
       } else if (state === 3) {
-        const mesh = freePoolMesh(scrapPool);
+        const mesh = freePoolMesh(woodDropPool);
         if (mesh) {
           mesh.position.set(bp.x, bp.y + 0.5, bp.z);
           mesh.visible = true;
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'wood_plank' });
         }
       } else if (state === 4) {
-        const mesh = freePoolMesh(scrapPool);
-        if (mesh) {
-          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+        const scrapCount = 20 + Math.floor(Math.random() * 11);
+        for (let s = 0; s < scrapCount; s++) {
+          const mesh = freePoolMesh(scrapPool);
+          if (!mesh) break;
+          mesh.position.set(bp.x + (Math.random() - 0.5) * 2, bp.y + 0.5 + Math.random(), bp.z + (Math.random() - 0.5) * 2);
           mesh.visible = true;
-          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'reinforced_block' });
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'scrap' });
         }
       } else {
         const scrapCount = 5 + Math.floor(Math.random() * 3);

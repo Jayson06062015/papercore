@@ -420,13 +420,14 @@
       glueyMeshes.push(m);
     }
     const glueys = [];
+    let glueySpawnTimer = 0;
     for (let gi = 0; gi < 15; gi++) {
       const a = Math.random() * Math.PI * 2;
       const d = 5 + Math.random() * 20;
       const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
       const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
       const mesh = glueyMeshes[gi];
-      const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 5 };
+      const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 5, panicTimer: 0 };
       if (mesh) { mesh.position.set(sx, sy + 0.75, sz); mesh.visible = true; }
       glueys.push(g);
     }
@@ -478,6 +479,17 @@
     }
     const projectiles = [];
     let throwCooldown = 0;
+    const glueTex = new THREE.TextureLoader().load('./Glue.png');
+    const glueMat = new THREE.MeshStandardMaterial({ map: glueTex, transparent: true });
+    const glueGeo = new THREE.BoxGeometry(0.25, 0.08, 0.25);
+    const GLUE_POOL = 30;
+    const glueDropPool = [];
+    for (let i = 0; i < GLUE_POOL; i++) {
+      const m = new THREE.Mesh(glueGeo, glueMat);
+      m.visible = false;
+      scene.add(m);
+      glueDropPool.push(m);
+    }
 
     function isSolidBlock(bx, bz, by) {
       if (by < 0 || by >= gridY) return false;
@@ -1463,10 +1475,19 @@
             const g = glueys[gi];
             if (Math.abs(p.pos.x - g.x) < 0.4 && Math.abs(p.pos.z - g.z) < 0.4 && Math.abs(p.pos.y - g.y) < 0.9) {
               g.hp -= p.type === 'reinforced' ? 5 : 2;
+              g.panicTimer = 10;
               p.mesh.visible = false;
               projectiles.splice(i, 1);
               if (g.hp <= 0) {
                 if (g.mesh) g.mesh.visible = false;
+                for (let di = 0; di < 2 + Math.floor(Math.random() * 2); di++) {
+                  const gm = freePoolMesh(glueDropPool);
+                  if (gm) {
+                    gm.position.set(g.x + (Math.random()-0.5)*0.6, g.y + 0.5, g.z + (Math.random()-0.5)*0.6);
+                    gm.visible = true;
+                    scrapItems.push({ mesh: gm, pos: gm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'glue' });
+                  }
+                }
                 glueys.splice(gi, 1);
               }
               hit = true;
@@ -1510,28 +1531,45 @@
         }
         return false;
       }
+      glueySpawnTimer += dt;
+      if (glueySpawnTimer > 3 && glueys.length < 15) {
+        glueySpawnTimer = 0;
+        const freeMesh = glueyMeshes.find(m => !m.visible);
+        if (freeMesh) {
+          const a = Math.random() * Math.PI * 2;
+          const d = 5 + Math.random() * 20;
+          const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
+          const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
+          freeMesh.position.set(sx, sy + 0.75, sz);
+          freeMesh.visible = true;
+          glueys.push({ x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh: freeMesh, hp: 5, panicTimer: 0 });
+        }
+      }
       for (let gi = 0; gi < glueys.length; gi++) {
         const g = glueys[gi];
-        g.moveTimer -= dt;
+        if (g.panicTimer > 0) g.panicTimer -= dt;
+        const speedMul = g.panicTimer > 0 ? 3 : 1;
+        const jumpChance = g.panicTimer > 0 ? 6 : 1.5;
+        g.moveTimer -= dt * speedMul;
         if (g.moveTimer <= 0) {
           g.moveTimer = 1 + Math.random() * 2;
           const a2 = Math.random() * Math.PI * 2;
           g.dirX = Math.cos(a2);
           g.dirZ = Math.sin(a2);
         }
-        if (g.onGround && Math.random() < 1.5 * dt) {
+        if (g.onGround && Math.random() < jumpChance * dt) {
           g.vy = 7;
           g.onGround = false;
         }
         g.vy -= 20 * dt;
-        const gNextX = g.x + g.dirX * 2.5 * dt;
+        const gNextX = g.x + g.dirX * 2.5 * speedMul * dt;
         if (!glueyBlockedInDir(gNextX, g.y, g.z, Math.sign(g.dirX), 0)) {
           g.x = gNextX;
         } else {
           g.dirX = 0;
           g.moveTimer = 0;
         }
-        const gNextZ = g.z + g.dirZ * 2.5 * dt;
+        const gNextZ = g.z + g.dirZ * 2.5 * speedMul * dt;
         if (!glueyBlockedInDir(g.x, g.y, gNextZ, 0, Math.sign(g.dirZ))) {
           g.z = gNextZ;
         } else {

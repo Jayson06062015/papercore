@@ -515,6 +515,17 @@
       scene.add(m);
       glueDropPool.push(m);
     }
+    const cartScrapTex = new THREE.TextureLoader().load('./Cartolina Scrap.png');
+    const cartScrapMat = new THREE.MeshStandardMaterial({ map: cartScrapTex, transparent: true });
+    const cartScrapGeo = new THREE.BoxGeometry(0.25, 0.08, 0.25);
+    const CART_SCRAP_POOL = 20;
+    const cartScrapPool = [];
+    for (let i = 0; i < CART_SCRAP_POOL; i++) {
+      const m = new THREE.Mesh(cartScrapGeo, cartScrapMat);
+      m.visible = false;
+      scene.add(m);
+      cartScrapPool.push(m);
+    }
 
     function isSolidBlock(bx, bz, by) {
       if (by < 0 || by >= gridY) return false;
@@ -1516,6 +1527,36 @@
                   }
                 }
                 glueys.splice(gi, 1);
+              }
+              hit = true;
+              break;
+            }
+          }
+          if (hit) continue;
+          for (let ci = cartolines.length - 1; ci >= 0; ci--) {
+            const c = cartolines[ci];
+            if (Math.abs(p.pos.x - c.x) < 1.0 && Math.abs(p.pos.z - c.z) < 0.2 && Math.abs(p.pos.y - c.y) < 1.1) {
+              c.hp -= p.type === 'reinforced' ? 5 : 2;
+              p.mesh.visible = false;
+              projectiles.splice(i, 1);
+              if (c.hp <= 0) {
+                if (c.mesh) c.mesh.visible = false;
+                const scrapCount = 30 + Math.floor(Math.random() * 21);
+                for (let di = 0; di < scrapCount; di++) {
+                  const sm = freePoolMesh(scrapPool);
+                  if (sm) {
+                    sm.position.set(c.x + (Math.random()-0.5)*2, c.y + 0.5 + Math.random(), c.z + (Math.random()-0.5)*0.5);
+                    sm.visible = true;
+                    scrapItems.push({ mesh: sm, pos: sm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'scrap' });
+                  }
+                }
+                const csm = freePoolMesh(cartScrapPool);
+                if (csm) {
+                  csm.position.set(c.x, c.y + 0.5, c.z);
+                  csm.visible = true;
+                  scrapItems.push({ mesh: csm, pos: csm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'cartolina' });
+                }
+                cartolines.splice(ci, 1);
               }
               hit = true;
               break;

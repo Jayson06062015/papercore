@@ -872,7 +872,9 @@
         const dx = t.clientX - lx, dy = t.clientY - ly;
         if (Math.abs(t.clientX - tapX) > 8 || Math.abs(t.clientY - tapY) > 8) tapMoved = true;
         lx = t.clientX; ly = t.clientY;
-        yaw -= dx * 0.005; pitch -= dy * 0.005;
+        const el = document.querySelector('#sensSlider');
+        const ts = (el ? parseFloat(el.value) : 5) * 0.0004;
+        yaw -= dx * ts; pitch -= dy * ts;
         const pl = Math.PI/2; pitch = Math.max(-pl, Math.min(pl, pitch));
       }, { passive: false });
       document.addEventListener('touchend', (e) => {

@@ -799,7 +799,7 @@
     document.addEventListener('mousemove', (e) => {
       if (document.pointerLockElement !== renderer.domElement) return;
       const el = document.querySelector('#sensSlider');
-      const s = (el ? parseFloat(el.value) : 5) * 0.0004;
+      const s = (el ? parseFloat(el.value) : 5) * 0.001;
       yaw -= e.movementX * s;
       pitch -= e.movementY * s;
       const pitchLimit = thirdPerson ? Math.PI/4 : Math.PI/2;
@@ -873,7 +873,7 @@
         if (Math.abs(t.clientX - tapX) > 8 || Math.abs(t.clientY - tapY) > 8) tapMoved = true;
         lx = t.clientX; ly = t.clientY;
         const el = document.querySelector('#sensSlider');
-        const ts = (el ? parseFloat(el.value) : 5) * 0.0004;
+        const ts = (el ? parseFloat(el.value) : 5) * 0.001;
         yaw -= dx * ts; pitch -= dy * ts;
         const pl = Math.PI/2; pitch = Math.max(-pl, Math.min(pl, pitch));
       }, { passive: false });

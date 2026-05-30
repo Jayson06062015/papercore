@@ -29,9 +29,11 @@
     #health-bar .hp-fill { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); border-radius:6px; transition: none !important; }
     #inventory { position:fixed; bottom:15px; left:50%; transform:translateX(-50%); display:none; gap:6px; z-index:20; }
     #making { position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:30; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); }
-    #making .window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:24px; min-width:340px; box-shadow:0 0 40px rgba(139,92,246,0.3); }
+    #making .window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:24px; min-width:340px; max-width:400px; box-shadow:0 0 40px rgba(139,92,246,0.3); }
+
     #making h2 { margin:0 0 16px; font-size:24px; color:#4c1d95; text-align:center; font-weight:900; }
-    #making .grid { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+
+    #making .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; max-height:360px; overflow-y:auto; padding-right:4px; -webkit-overflow-scrolling:touch; }
     #making .card { width:90px; padding:10px 6px; background:rgba(255,255,255,0.7); border:2px solid #ddd6fe; border-radius:10px; cursor:pointer; text-align:center; transition:0.15s; box-sizing:border-box; }
     #making .card:hover { border-color:#8b5cf6; }
     #making .card.selected { border-color:#6d28d9; background:#ede9fe; box-shadow:0 0 8px rgba(109,40,217,0.25); }

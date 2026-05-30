@@ -289,7 +289,7 @@
     const waterBallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterBallTex, transparent: true });
     const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
     const mx = new THREE.Matrix4();
-    const scaleDummy = new THREE.Object3D();
+    const tempMat = new THREE.Matrix4();
     const CHUNK = 10;
     const chX = Math.ceil(gridX / CHUNK), chZ = Math.ceil(gridZ / CHUNK), chY = Math.ceil(gridY / CHUNK);
     const loadedChunks = new Map();
@@ -339,34 +339,28 @@
       const waterMesh = new THREE.InstancedMesh(cubeGeo, waterMat, count);
       mesh.receiveShadow = true; mesh.castShadow = true;
       waterMesh.receiveShadow = true; waterMesh.castShadow = true;
+      const pm = new THREE.Matrix4();
       let i = 0;
       for (let x = sx; x < ex; x++) {
         for (let z = sz; z < ez; z++) {
           for (let y = sy; y < ey; y++) {
             const wx = x - halfX + 0.5, wz = z - halfZ + 0.5, wy = y + 0.5;
             const state = states[i];
+            const te = pm.elements;
             if (state === 0) {
-              scaleDummy.scale.set(0, 0, 0);
-              scaleDummy.position.set(wx, wy, wz);
-              scaleDummy.updateMatrix();
-              mesh.setMatrixAt(i, scaleDummy.matrix);
-              waterMesh.setMatrixAt(i, scaleDummy.matrix);
+              te[0]=0;te[5]=0;te[10]=0;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+              mesh.setMatrixAt(i, pm);
+              waterMesh.setMatrixAt(i, pm);
             } else if (state === 2) {
-              scaleDummy.scale.set(1, 1, 1);
-              scaleDummy.position.set(wx, wy, wz);
-              scaleDummy.updateMatrix();
-              waterMesh.setMatrixAt(i, scaleDummy.matrix);
-              scaleDummy.scale.set(0, 0, 0);
-              scaleDummy.updateMatrix();
-              mesh.setMatrixAt(i, scaleDummy.matrix);
+              te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+              waterMesh.setMatrixAt(i, pm);
+              te[0]=0;te[5]=0;te[10]=0;
+              mesh.setMatrixAt(i, pm);
             } else {
-              scaleDummy.scale.set(1, 1, 1);
-              scaleDummy.position.set(wx, wy, wz);
-              scaleDummy.updateMatrix();
-              mesh.setMatrixAt(i, scaleDummy.matrix);
-              scaleDummy.scale.set(0, 0, 0);
-              scaleDummy.updateMatrix();
-              waterMesh.setMatrixAt(i, scaleDummy.matrix);
+              te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+              mesh.setMatrixAt(i, pm);
+              te[0]=0;te[5]=0;te[10]=0;
+              waterMesh.setMatrixAt(i, pm);
             }
             i++;
           }
@@ -451,7 +445,6 @@
     const scrapTex = new THREE.TextureLoader().load('./Paper Scrap.png');
     const scrapMat = new THREE.MeshStandardMaterial({ map: scrapTex, transparent: true });
     const scrapGeo = new THREE.BoxGeometry(0.3, 0.08, 0.3);
-    const scrapDummy = new THREE.Object3D();
     const scrapPool = [];
     const scrapItems = [];
     const POOL_SIZE = 200;
@@ -514,12 +507,11 @@
       chunk.mesh.instanceColor.needsUpdate = true;
       chunk.waterMesh.setColorAt(localId, white);
       chunk.waterMesh.instanceColor.needsUpdate = true;
-      scrapDummy.scale.set(0, 0, 0);
-      scrapDummy.position.set(bp.x, bp.y, bp.z);
-      scrapDummy.updateMatrix();
-      chunk.mesh.setMatrixAt(localId, scrapDummy.matrix);
+      const te = tempMat.elements;
+      te[0]=0;te[5]=0;te[10]=0;te[12]=bp.x;te[13]=bp.y;te[14]=bp.z;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+      chunk.mesh.setMatrixAt(localId, tempMat);
       chunk.mesh.instanceMatrix.needsUpdate = true;
-      chunk.waterMesh.setMatrixAt(localId, scrapDummy.matrix);
+      chunk.waterMesh.setMatrixAt(localId, tempMat);
       chunk.waterMesh.instanceMatrix.needsUpdate = true;
 
       if (wasWater) {
@@ -616,25 +608,23 @@
       if (isWater) {
         removeItems('water_block', 1);
         pChunk.states[pId] = 2;
-        scaleDummy.scale.set(0, 0, 0);
-        scaleDummy.position.set(bx - halfX + 0.5, by + 0.5, bz - halfZ + 0.5);
-        scaleDummy.updateMatrix();
-        pChunk.mesh.setMatrixAt(pId, scaleDummy.matrix);
-        scaleDummy.scale.set(1, 1, 1);
-        scaleDummy.updateMatrix();
-        pChunk.waterMesh.setMatrixAt(pId, scaleDummy.matrix);
+        const w = bx - halfX + 0.5, h = by + 0.5, d = bz - halfZ + 0.5;
+        const te = tempMat.elements;
+        te[0]=0;te[5]=0;te[10]=0;te[12]=w;te[13]=h;te[14]=d;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+        pChunk.mesh.setMatrixAt(pId, tempMat);
+        te[0]=1;te[5]=1;te[10]=1;
+        pChunk.waterMesh.setMatrixAt(pId, tempMat);
         pChunk.waterMesh.instanceMatrix.needsUpdate = true;
       } else {
         removeItems('paper_block', 1);
         pChunk.states[pId] = 1;
-        scaleDummy.scale.set(1, 1, 1);
-        scaleDummy.position.set(bx - halfX + 0.5, by + 0.5, bz - halfZ + 0.5);
-        scaleDummy.updateMatrix();
-        pChunk.mesh.setMatrixAt(pId, scaleDummy.matrix);
+        const w = bx - halfX + 0.5, h = by + 0.5, d = bz - halfZ + 0.5;
+        const te = tempMat.elements;
+        te[0]=1;te[5]=1;te[10]=1;te[12]=w;te[13]=h;te[14]=d;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+        pChunk.mesh.setMatrixAt(pId, tempMat);
         pChunk.mesh.instanceMatrix.needsUpdate = true;
-        scaleDummy.scale.set(0, 0, 0);
-        scaleDummy.updateMatrix();
-        pChunk.waterMesh.setMatrixAt(pId, scaleDummy.matrix);
+        te[0]=0;te[5]=0;te[10]=0;
+        pChunk.waterMesh.setMatrixAt(pId, tempMat);
         pChunk.waterMesh.instanceMatrix.needsUpdate = true;
       }
     }
@@ -1142,11 +1132,10 @@
         fpsTime = 0;
       }
 
-      const budget = 4;
       const t0 = performance.now();
-      while (chunkBuildQueue.length > 0 && performance.now() - t0 < budget) {
+      do {
         buildChunkMesh(chunkBuildQueue.shift());
-      }
+      } while (chunkBuildQueue.length > 0 && performance.now() - t0 < 8);
 
       playerBody.quaternion.setFromEuler(new THREE.Euler(0, yaw, 0));
 

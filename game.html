@@ -431,6 +431,31 @@
       if (mesh) { mesh.position.set(sx, sy + 0.75, sz); mesh.visible = true; }
       glueys.push(g);
     }
+    const cartolineTex = new THREE.TextureLoader().load('./Cartoline.png');
+    cartolineTex.encoding = THREE.sRGBEncoding;
+    const cartolineMat = new THREE.MeshStandardMaterial({ map: cartolineTex, transparent: true, roughness: 0.6 });
+    const cartolineGeo = new THREE.BoxGeometry(1.6, 1.8, 0.1);
+    const CARTOLINE_POOL = 20;
+    const cartolineMeshes = [];
+    for (let i = 0; i < CARTOLINE_POOL; i++) {
+      const m = new THREE.Mesh(cartolineGeo, cartolineMat);
+      m.visible = false;
+      m.castShadow = true;
+      scene.add(m);
+      cartolineMeshes.push(m);
+    }
+    const cartolines = [];
+    let cartolineSpawnTimer = 0;
+    for (let ci = 0; ci < 8; ci++) {
+      const a = Math.random() * Math.PI * 2;
+      const d = 10 + Math.random() * 30;
+      const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
+      const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
+      const mesh = cartolineMeshes[ci];
+      const c = { x: sx, y: sy + 0.9, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 20, throwCooldown: Math.random() * 0.7 };
+      if (mesh) { mesh.position.set(sx, sy + 0.9, sz); mesh.visible = true; }
+      cartolines.push(c);
+    }
     const startCX = Math.floor((playerBody.position.x + halfX) / CHUNK);
     const startCZ = Math.floor((playerBody.position.z + halfZ) / CHUNK);
     const startCY = Math.floor(playerBody.position.y / CHUNK);
@@ -610,7 +635,7 @@
       mesh.position.copy(camera.position).add(dir.clone().multiplyScalar(1.5));
       mesh.position.y -= 0.2;
       mesh.visible = true;
-      projectiles.push({ mesh, vel: dir.multiplyScalar(speed), pos: mesh.position.clone(), life: 3, type, traveled: 0 });
+      projectiles.push({ mesh, vel: dir.multiplyScalar(speed), pos: mesh.position.clone(), life: 3, type, traveled: 0, source: 'player' });
     }
 
     renderer.domElement.addEventListener('mousedown', (e) => {
@@ -1459,7 +1484,45 @@
           projectiles.splice(i, 1);
           continue;
         }
-        if (p.traveled > 2) {
+        if (p.source !== 'mob') {
+          if (p.traveled > 2) {
+            const hx = playerBody.position.x, hy = playerBody.position.y, hz = playerBody.position.z;
+            if (Math.abs(p.pos.x - hx) < 0.55 && Math.abs(p.pos.y - hy) < 0.6 && Math.abs(p.pos.z - hz) < 0.2) {
+              const dmg = p.type === 'reinforced' ? 5 : 2;
+              playerHealth = Math.max(0, playerHealth - dmg);
+              updateHealthDisplay();
+              if (playerHealth <= 0) { isPaused = true; die(); }
+              p.mesh.visible = false;
+              projectiles.splice(i, 1);
+              continue;
+            }
+          }
+          let hit = false;
+          for (let gi = glueys.length - 1; gi >= 0; gi--) {
+            const g = glueys[gi];
+            if (Math.abs(p.pos.x - g.x) < 0.6 && Math.abs(p.pos.z - g.z) < 0.6 && Math.abs(p.pos.y - g.y) < 1.1) {
+              g.hp -= p.type === 'reinforced' ? 5 : 2;
+              g.panicTimer = 10;
+              p.mesh.visible = false;
+              projectiles.splice(i, 1);
+              if (g.hp <= 0) {
+                if (g.mesh) g.mesh.visible = false;
+                for (let di = 0; di < 2 + Math.floor(Math.random() * 2); di++) {
+                  const gm = freePoolMesh(glueDropPool);
+                  if (gm) {
+                    gm.position.set(g.x + (Math.random()-0.5)*0.6, g.y + 0.5, g.z + (Math.random()-0.5)*0.6);
+                    gm.visible = true;
+                    scrapItems.push({ mesh: gm, pos: gm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'glue' });
+                  }
+                }
+                glueys.splice(gi, 1);
+              }
+              hit = true;
+              break;
+            }
+          }
+          if (hit) continue;
+        } else {
           const hx = playerBody.position.x, hy = playerBody.position.y, hz = playerBody.position.z;
           if (Math.abs(p.pos.x - hx) < 0.55 && Math.abs(p.pos.y - hy) < 0.6 && Math.abs(p.pos.z - hz) < 0.2) {
             const dmg = p.type === 'reinforced' ? 5 : 2;
@@ -1471,31 +1534,6 @@
             continue;
           }
         }
-        let hit = false;
-        for (let gi = glueys.length - 1; gi >= 0; gi--) {
-          const g = glueys[gi];
-          if (Math.abs(p.pos.x - g.x) < 0.6 && Math.abs(p.pos.z - g.z) < 0.6 && Math.abs(p.pos.y - g.y) < 1.1) {
-            g.hp -= p.type === 'reinforced' ? 5 : 2;
-            g.panicTimer = 10;
-            p.mesh.visible = false;
-            projectiles.splice(i, 1);
-            if (g.hp <= 0) {
-              if (g.mesh) g.mesh.visible = false;
-              for (let di = 0; di < 2 + Math.floor(Math.random() * 2); di++) {
-                const gm = freePoolMesh(glueDropPool);
-                if (gm) {
-                  gm.position.set(g.x + (Math.random()-0.5)*0.6, g.y + 0.5, g.z + (Math.random()-0.5)*0.6);
-                  gm.visible = true;
-                  scrapItems.push({ mesh: gm, pos: gm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'glue' });
-                }
-              }
-              glueys.splice(gi, 1);
-            }
-            hit = true;
-            break;
-          }
-        }
-        if (hit) continue;
         p.mesh.position.copy(p.pos);
       }
       if (throwCooldown > 0) throwCooldown -= dt;
@@ -1614,6 +1652,130 @@
           const gdx = playerBody.position.x - g.x;
           const gdz = playerBody.position.z - g.z;
           g.mesh.visible = gdx * gdx + gdz * gdz < renderDist * renderDist;
+        }
+      }
+
+      // Cartoline system
+      cartolineSpawnTimer += dt;
+      if (cartolineSpawnTimer > 5 && cartolines.length < 8) {
+        cartolineSpawnTimer = 0;
+        const freeMesh = cartolineMeshes.find(m => !m.visible);
+        if (freeMesh) {
+          const a = Math.random() * Math.PI * 2;
+          const d = 10 + Math.random() * 30;
+          const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
+          const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
+          freeMesh.position.set(sx, sy + 0.9, sz);
+          freeMesh.visible = true;
+          cartolines.push({ x: sx, y: sy + 0.9, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh: freeMesh, hp: 20, throwCooldown: Math.random() * 0.7 });
+        }
+      }
+      for (let ci = 0; ci < cartolines.length; ci++) {
+        const c = cartolines[ci];
+        const cdx = playerBody.position.x - c.x, cdz = playerBody.position.z - c.z;
+        const cdist2 = cdx * cdx + cdz * cdz;
+        c.throwCooldown -= dt;
+        c.moveTimer -= dt;
+        if (c.moveTimer <= 0) {
+          c.moveTimer = 1 + Math.random() * 2;
+          if (cdist2 < 25 * 25) {
+            c.dirX = cdx / Math.sqrt(cdist2);
+            c.dirZ = cdz / Math.sqrt(cdist2);
+          } else {
+            const a2 = Math.random() * Math.PI * 2;
+            c.dirX = Math.cos(a2);
+            c.dirZ = Math.sin(a2);
+          }
+        }
+        if (c.onGround && Math.random() < 1.5 * dt) {
+          c.vy = 7;
+          c.onGround = false;
+        }
+        c.vy -= 20 * dt;
+        const cHwX = 0.8, cHwZ = 0.05, cHh = 0.9, eps = 0.001;
+        const cNextX = c.x + c.dirX * 2.5 * dt;
+        const cEdgeX = cNextX + Math.sign(c.dirX) * cHwX;
+        const cbx = Math.floor(cEdgeX + halfX + (c.dirX > 0 ? eps : (c.dirX < 0 ? -eps : 0)));
+        const cminBY = Math.floor(c.y - cHh + eps);
+        const cmaxBY = Math.floor(c.y + cHh - eps);
+        let blockedX = false;
+        if (c.dirX !== 0) {
+          for (let by = cminBY; by <= cmaxBY; by++) {
+            if (by >= 0 && by < gridY && isSolidBlock(cbx, Math.floor(c.z + halfZ + (c.dirX > 0 ? cHwZ : -cHwZ)), by)) { blockedX = true; break; }
+          }
+        }
+        if (!blockedX) {
+          c.x = cNextX;
+        } else {
+          c.dirX = 0;
+          c.moveTimer = 0;
+        }
+        const cNextZ = c.z + c.dirZ * 2.5 * dt;
+        const cEdgeZ = cNextZ + Math.sign(c.dirZ) * cHwZ;
+        const cbz = Math.floor(cEdgeZ + halfZ + (c.dirZ > 0 ? eps : (c.dirZ < 0 ? -eps : 0)));
+        let blockedZ = false;
+        if (c.dirZ !== 0) {
+          for (let by = cminBY; by <= cmaxBY; by++) {
+            if (by >= 0 && by < gridY && isSolidBlock(Math.floor(c.x + halfX + (c.dirZ > 0 ? cHwX : -cHwX)), cbz, by)) { blockedZ = true; break; }
+          }
+        }
+        if (!blockedZ) {
+          c.z = cNextZ;
+        } else {
+          c.dirZ = 0;
+          c.moveTimer = 0;
+        }
+        c.y += c.vy * dt;
+        const cbx2 = Math.floor(c.x + halfX);
+        const cbz2 = Math.floor(c.z + halfZ);
+        if (c.vy <= 0 && cbx2 >= 0 && cbz2 >= 0) {
+          let cGroundY = -1;
+          const cxc = Math.floor(cbx2 / CHUNK), czc = Math.floor(cbz2 / CHUNK);
+          for (let cy = chY - 1; cy >= 0; cy--) {
+            const chunk = getChunk(cxc, czc, cy);
+            if (!chunk) continue;
+            for (let ly = chunk.ny - 1; ly >= 0; ly--) {
+              const blockY = chunk.sy + ly;
+              if (blockY + 1 > c.y) continue;
+              const localId = chunkLocalIdx(chunk, cbx2, cbz2, blockY);
+              if (localId >= 0 && localId < chunk.states.length && chunk.states[localId] !== 0) {
+                cGroundY = blockY;
+                break;
+              }
+            }
+            if (cGroundY >= 0) break;
+          }
+          if (cGroundY >= 0) {
+            const snapY = cGroundY + 1 + cHh;
+            if (c.y <= snapY + 0.05) {
+              c.y = snapY;
+              c.vy = 0;
+              c.onGround = true;
+            }
+          }
+        }
+        if (c.y < cHh) {
+          c.y = cHh; c.vy = 0; c.onGround = true;
+        }
+        if (c.mesh) {
+          c.mesh.position.set(c.x, c.y, c.z);
+          c.mesh.rotation.y = Math.atan2(c.dirX || 0.001, c.dirZ || 0);
+          c.mesh.visible = cdist2 < renderDist * renderDist;
+        }
+        if (c.throwCooldown <= 0 && cdist2 < 25 * 25) {
+          c.throwCooldown = 0.7;
+          const cm = freePoolMesh(thrownPool);
+          if (cm) {
+            const isReinf = Math.random() < 0.2;
+            const cSpeed = isReinf ? 25 : 15;
+            const cDir = new THREE.Vector3(cdx, 0, cdz).normalize();
+            cDir.y = -0.1;
+            cDir.normalize();
+            cm.material = isReinf ? reinforcedBallMat : paperBallMat;
+            cm.position.set(c.x, c.y + 0.5, c.z);
+            cm.visible = true;
+            projectiles.push({ mesh: cm, vel: cDir.multiplyScalar(cSpeed), pos: cm.position.clone(), life: 3, type: isReinf ? 'reinforced' : 'paper_ball', traveled: 0, source: 'mob' });
+          }
         }
       }
 

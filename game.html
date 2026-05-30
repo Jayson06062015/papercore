@@ -993,9 +993,12 @@
         if (tapTimer) { clearTimeout(tapTimer); tapTimer = null; }
         if (!tapMoved && !tapHolding && (Date.now() - tapStart) < 400) {
           const sel = inventory[selectedSlot];
-          if (sel && sel.count > 0 && (sel.type === 'paper_ball' || sel.type === 'reinforced') && throwCooldown <= 0) {
+          if (sel && sel.count > 0 && sel.type === 'attachable') {
+            removeItems('attachable', 1);
+            playerHealth = Math.min(maxHealth, playerHealth + 2);
+            updateHealthDisplay();
+          } else if (sel && sel.count > 0 && (sel.type === 'paper_ball' || sel.type === 'reinforced') && throwCooldown <= 0) {
             tryThrowBall(sel.type);
-          } else if (sel && sel.count > 0 && sel.type === 'attachable') {
             removeItems('attachable', 1);
             playerHealth = Math.min(maxHealth, playerHealth + 2);
             updateHealthDisplay();

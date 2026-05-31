@@ -346,7 +346,7 @@
     const ashTex = new THREE.TextureLoader().load('./Ash Block.png');
     ashTex.encoding = THREE.sRGBEncoding;
     ashMat.map = ashTex;
-    const vinuTex = new THREE.TextureLoader().load('./Vinu Powder.png');
+    const vinuTex = new THREE.TextureLoader().load('./Vinu Powder Block.png');
     vinuTex.encoding = THREE.sRGBEncoding;
     vinuPowderMat.map = vinuTex;
     const crateTex = new THREE.TextureLoader().load('./Paper Crate.png');
@@ -881,6 +881,7 @@
           mesh.position.set(bp.x, bp.y + 0.5, bp.z);
           mesh.visible = true;
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'paper_crate' });
+        }
       } else if (state === 2) {
         const dropCount = 1 + Math.floor(Math.random() * 3);
         for (let s = 0; s < dropCount; s++) {
@@ -1716,7 +1717,7 @@
       wood_club:'./Wood Club.png',
       beacon:'./Beacon.png',
       ash_block:'./Ash Block.png',
-      vinu_powder:'./Vinu Powder.png',
+      vinu_powder:'./Vinu Powder Block.png',
       paper_crate:'./Paper Crate.png'
     };
 

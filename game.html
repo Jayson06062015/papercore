@@ -593,7 +593,7 @@
       scene.add(m);
       glueDropPool.push(m);
     }
-    const plasticTex = new THREE.TextureLoader().load('./Plastic Piece.png');
+    const plasticTex = new THREE.TextureLoader().load('./Plastic Scrap.png');
     const plasticMat = new THREE.MeshStandardMaterial({ map: plasticTex, transparent: true });
     const plasticGeo = new THREE.BoxGeometry(0.25, 0.08, 0.25);
     const PLASTIC_POOL = 20;
@@ -1477,7 +1477,7 @@
     const srcMap = {
       water:'./Water Ball.png',       paperball:'./Paper Ball.png', paper_ball:'./Paper Ball.png',
       reinforced:'./Reinforced Paper Ball.png', scrap:'./Paper Scrap.png',
-      plastic:'./Plastic Piece.png', glue:'./Glue.png',
+      plastic:'./Plastic Scrap.png', glue:'./Glue.png',
       attachable:'./Attachable Paper Scrap.png', cartolina:'./Cartolina Scrap.png',
       shield:'./Paper Shield.png', reinforced_shield:'./Reinforced Paper Shield.png',
       paper_block:'./Paper Block.png', reinforced_block:'./Reinforced Paper Block.png',
@@ -1582,7 +1582,7 @@
       { id: 'attachable', name: 'Attachable Paper Scrap', result: 'attachable', resultImg: './Attachable Paper Scrap.png', ingredients: [{ type: 'glue', count: 1, img: './Glue.png' }, { type: 'scrap', count: 1, img: './Paper Scrap.png' }] },
       { id: 'cardboard_club', name: 'Cardboard Club', result: 'cardboard_club', resultImg: './Cardboard Club.png', ingredients: [{ type: 'cardboard', count: 3, img: './Cardboard.png' }] },
       { id: 'wood_club', name: 'Wood Club', result: 'wood_club', resultImg: './Wood Club.png', ingredients: [{ type: 'wood_plank', count: 3, img: './Wood Plank.png' }] },
-      { id: 'beacon', name: 'Beacon', result: 'beacon', resultImg: './Beacon.png', ingredients: [{ type: 'cartolina', count: 25, img: './Cartolina Scrap.png' }, { type: 'wood_plank', count: 1, img: './Wood Plank.png' }, { type: 'plastic', count: 5, img: './Plastic Piece.png' }, { type: 'glue', count: 20, img: './Glue.png' }] },
+      { id: 'beacon', name: 'Beacon', result: 'beacon', resultImg: './Beacon.png', ingredients: [{ type: 'cartolina', count: 25, img: './Cartolina Scrap.png' }, { type: 'wood_plank', count: 1, img: './Wood Plank.png' }, { type: 'plastic', count: 5, img: './Plastic Scrap.png' }, { type: 'glue', count: 20, img: './Glue.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');

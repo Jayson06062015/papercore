@@ -496,13 +496,13 @@
             } else if (state === 7) {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               vinuMesh.setMatrixAt(i, pm);
-              crateMesh.setMatrixAt(i, pm);
               te[0]=0;te[5]=0;te[10]=0;
               mesh.setMatrixAt(i, pm);
               waterMesh.setMatrixAt(i, pm);
               woodMesh.setMatrixAt(i, pm);
               reinfMesh.setMatrixAt(i, pm);
               ashMesh.setMatrixAt(i, pm);
+              crateMesh.setMatrixAt(i, pm);
             } else if (state === 8) {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               crateMesh.setMatrixAt(i, pm);
@@ -1296,8 +1296,9 @@
         scene.fog.color.setHex(0x440000);
         playerBody.position.x += DIM_OFFSET;
         playerBody.position.z = 0;
-        playerBody.position.y = terrainHeightVinu(Math.floor(playerBody.position.x), 0) + 3;
-        const wx = playerBody.position.x, wy = playerBody.position.y - 1, wz = playerBody.position.z + 2;
+        playerBody.position.y = terrainHeightVinu(Math.floor(playerBody.position.x), Math.floor(playerBody.position.z)) + 3;
+        const wx = playerBody.position.x, wz = playerBody.position.z + 3;
+        const wy = terrainHeightVinu(Math.floor(wx), Math.floor(wz)) + 1;
         for (let i = 0; i < BEACON_POOL; i++) {
           const bm = beaconBaseMeshes[i];
           if (bm.visible) continue;

@@ -1220,6 +1220,8 @@
         beacons.length = 0;
         scrapItems.length = 0;
         currentDim = 'vinu';
+        scene.background = new THREE.Color(0x440000);
+        scene.fog.color.setHex(0x440000);
         playerBody.position.x += DIM_OFFSET;
         playerBody.position.z = 0;
         playerBody.position.y = terrainHeightVinu(Math.floor(playerBody.position.x), 0) + 3;
@@ -1245,6 +1247,8 @@
         scrapItems.length = 0;
         if (portalBeacon) { portalBeacon.baseMesh.visible = false; portalBeacon.beamMesh.visible = false; portalBeacon = null; }
         currentDim = 'paperia';
+        scene.background = skyTex;
+        scene.fog.color.setHex(0xdceeff);
         playerBody.position.x -= DIM_OFFSET;
         playerBody.position.y = terrainHeight(Math.floor(playerBody.position.x), Math.floor(playerBody.position.z)) + 3;
       }

@@ -622,7 +622,7 @@
     const beaconBeamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, emissive: 0xffffff, emissiveIntensity: 0.3 });
     const beaconBeamGeo = new THREE.BoxGeometry(0.667, 1000, 0.667);
     const beaconBaseMat = new THREE.MeshStandardMaterial({ map: new THREE.TextureLoader().load('./Beacon.png'), transparent: true });
-    const beaconBaseGeo = new THREE.BoxGeometry(0.667, 0.667, 0.667);
+    const beaconBaseGeo = new THREE.BoxGeometry(1, 1, 1);
     const BEACON_POOL = 10;
     const beacons = [];
     const beaconBaseMeshes = [];
@@ -962,7 +962,7 @@
         bm.position.set(wx, wy, wz);
         bm.visible = true;
         const bbm = beaconBeamMeshes[i];
-        bbm.position.set(wx, wy + 500, wz);
+        bbm.position.set(wx, wy + 0.5 + 500, wz);
         bbm.visible = true;
         beacons.push({ x: wx, y: wy, z: wz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
         removeItems('beacon', 1);

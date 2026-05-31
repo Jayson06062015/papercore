@@ -601,7 +601,7 @@
       return id >= 0 && id < ch.states.length && ch.states[id] !== 0;
     }
 
-    function playerCollidesAt(px, py, pz) {
+    function playerCollidesAt(px, py, pz, aboveCenter) {
       const hwX = 0.4, hwZ = 0.05, hh = 0.45;
       const minBX = Math.floor(px - hwX + halfX);
       const maxBX = Math.floor(px + hwX + halfX - 0.001);
@@ -612,7 +612,10 @@
       for (let bx = minBX; bx <= maxBX; bx++) {
         for (let by = minBY; by <= maxBY; by++) {
           for (let bz = minBZ; bz <= maxBZ; bz++) {
-            if (isSolidBlock(bx, bz, by)) return true;
+            if (isSolidBlock(bx, bz, by)) {
+              if (aboveCenter && (by + 1) <= py) continue;
+              return true;
+            }
           }
         }
       }
@@ -727,7 +730,7 @@
       if (!sel || sel.count <= 0 || (sel.type !== 'cardboard_club' && sel.type !== 'wood_club')) return false;
       const dmg = sel.type === 'wood_club' ? 5 : 2;
       const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
-      const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+      const fwd = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
       const fx = fwd.x, fy = fwd.y, fz = fwd.z;
       const cosAng = 0.94;
 
@@ -1553,18 +1556,18 @@
         return false;
       }
 
-      if (playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z)) {
+      if (playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) {
         const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
         for (const [dx, dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
           for (let d = 0.1; d <= 1.5; d += 0.1) {
             const tx = px + dx * d, tz = pz + dz * d;
-            if (!playerCollidesAt(tx, py, tz)) {
+            if (!playerCollidesAt(tx, py, tz, true)) {
               playerBody.position.x = tx;
               playerBody.position.z = tz;
               break;
             }
           }
-          if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z)) break;
+          if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
         }
       }
 

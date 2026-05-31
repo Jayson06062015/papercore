@@ -619,6 +619,24 @@
       scene.add(m);
       woodDropPool.push(m);
     }
+    const beaconBeamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, emissive: 0xffffff, emissiveIntensity: 0.3 });
+    const beaconBeamGeo = new THREE.BoxGeometry(0.667, 1000, 0.667);
+    const beaconBaseMat = new THREE.MeshStandardMaterial({ map: new THREE.TextureLoader().load('./Beacon.png'), transparent: true });
+    const beaconBaseGeo = new THREE.BoxGeometry(0.667, 0.667, 0.667);
+    const BEACON_POOL = 10;
+    const beacons = [];
+    const beaconBaseMeshes = [];
+    const beaconBeamMeshes = [];
+    for (let i = 0; i < BEACON_POOL; i++) {
+      const bm = new THREE.Mesh(beaconBaseGeo, beaconBaseMat);
+      bm.visible = false;
+      scene.add(bm);
+      beaconBaseMeshes.push(bm);
+      const bbm = new THREE.Mesh(beaconBeamGeo, beaconBeamMat);
+      bbm.visible = false;
+      scene.add(bbm);
+      beaconBeamMeshes.push(bbm);
+    }
 
     function isSolidBlock(bx, bz, by) {
       if (by < 0 || by >= gridY) return false;
@@ -909,6 +927,48 @@
         return true;
       } catch(e) { return false; }
     }
+    function tryPlaceBeacon() {
+      const sel = inventory[selectedSlot];
+      if (!sel || sel.count <= 0 || sel.type !== 'beacon') return;
+      raycaster.setFromCamera({ x: 0, y: 0 }, camera);
+      const hits = raycaster.intersectObjects(visibleMeshes);
+      if (!hits.length) return;
+      const hitObj = hits[0].object;
+      let chunk = null;
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj) { chunk = c; break; } }
+      if (!chunk) return;
+      const hi = hits[0].instanceId;
+      const bp = idxToWorldPos(chunk, hi);
+      if (Math.sqrt((playerBody.position.x-bp.x)**2+(playerBody.position.y-bp.y)**2+(playerBody.position.z-bp.z)**2) > 5) return;
+      const fn = hits[0].face.normal;
+      const nx = Math.round(fn.x), ny = Math.round(fn.y), nz = Math.round(fn.z);
+      const bx = Math.round(bp.x + halfX - 0.5) + nx;
+      const by = Math.round(bp.y - 0.5) + ny;
+      const bz = Math.round(bp.z + halfZ - 0.5) + nz;
+      if (by < 0 || by >= gridY) return;
+      const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
+      if ((px-0.4) < (bx-halfX+1) && (px+0.4) > (bx-halfX) && (py-0.45) < (by+1) && (py+0.45) > by && (pz-0.05) < (bz-halfZ+1) && (pz+0.05) > (bz-halfZ)) return;
+      const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(by / CHUNK);
+      const pChunk = ensureChunkSync(cxc, czc, cyc);
+      const pId = chunkLocalIdx(pChunk, bx, bz, by);
+      if (pChunk.states[pId] !== 0) return;
+      for (const b of beacons) {
+        if (Math.abs(b.x - (bx - halfX + 0.5)) < 0.1 && Math.abs(b.y - (by + 0.5)) < 0.1 && Math.abs(b.z - (bz - halfZ + 0.5)) < 0.1) return;
+      }
+      for (let i = 0; i < BEACON_POOL; i++) {
+        const bm = beaconBaseMeshes[i];
+        if (bm.visible) continue;
+        const wx = bx - halfX + 0.5, wy = by + 0.5, wz = bz - halfZ + 0.5;
+        bm.position.set(wx, wy, wz);
+        bm.visible = true;
+        const bbm = beaconBeamMeshes[i];
+        bbm.position.set(wx, wy + 500, wz);
+        bbm.visible = true;
+        beacons.push({ x: wx, y: wy, z: wz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
+        removeItems('beacon', 1);
+        return;
+      }
+    }
     function tryPlaceBlock() {
       const sel = inventory[selectedSlot];
       if (!sel || sel.count <= 0) return;
@@ -916,6 +976,7 @@
       const isPaper = sel.type === 'paper_block';
       const isWood = sel.type === 'wood_plank';
       const isReinf = sel.type === 'reinforced_block';
+      if (sel.type === 'beacon') { tryPlaceBeacon(); return; }
       if (!isPaper && !isWater && !isWood && !isReinf) return;
       raycaster.setFromCamera({ x: 0, y: 0 }, camera);
       const hits = raycaster.intersectObjects(visibleMeshes);
@@ -1353,7 +1414,8 @@
       cardboard:'./Cardboard.png',
       wood_plank:'./Wood Plank.png',
       cardboard_club:'./Cardboard Club.png',
-      wood_club:'./Wood Club.png'
+      wood_club:'./Wood Club.png',
+      beacon:'./Beacon.png'
     };
 
     function updateSlot(i) {
@@ -1448,6 +1510,7 @@
       { id: 'attachable', name: 'Attachable Paper Scrap', result: 'attachable', resultImg: './Attachable Paper Scrap.png', ingredients: [{ type: 'glue', count: 1, img: './Glue.png' }, { type: 'scrap', count: 1, img: './Paper Scrap.png' }] },
       { id: 'cardboard_club', name: 'Cardboard Club', result: 'cardboard_club', resultImg: './Cardboard Club.png', ingredients: [{ type: 'cardboard', count: 3, img: './Cardboard.png' }] },
       { id: 'wood_club', name: 'Wood Club', result: 'wood_club', resultImg: './Wood Club.png', ingredients: [{ type: 'wood_plank', count: 3, img: './Wood Plank.png' }] },
+      { id: 'beacon', name: 'Beacon', result: 'beacon', resultImg: './Beacon.png', ingredients: [{ type: 'cartolina', count: 25, img: './Cartolina Scrap.png' }, { type: 'wood_plank', count: 1, img: './Wood Plank.png' }, { type: 'plastic', count: 5, img: './Plastic Piece.png' }, { type: 'glue', count: 20, img: './Glue.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');
@@ -2242,6 +2305,10 @@
             }
           }
         }
+      }
+      for (const b of beacons) {
+        b.angle += dt * 0.8;
+        b.beamMesh.rotation.y = b.angle;
       }
 
       if ((fpsFrames % 10) === 0) {

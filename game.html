@@ -734,14 +734,25 @@
       const fx = fwd.x, fy = fwd.y, fz = fwd.z;
       const cosAng = 0.94;
 
+      function checkMobHit(mx, my, mz, hx, hy, hz) {
+        const corners = [
+          [-hx, -hy, -hz], [hx, -hy, -hz], [-hx, hy, -hz], [hx, hy, -hz],
+          [-hx, -hy, hz], [hx, -hy, hz], [-hx, hy, hz], [hx, hy, hz]
+        ];
+        for (const [cox, coy, coz] of corners) {
+          const dx = mx + cox - px, dy = my + coy - py, dz = mz + coz - pz;
+          const dist2 = dx * dx + dy * dy + dz * dz;
+          if (dist2 >= 25) continue;
+          const dist = Math.sqrt(dist2);
+          const dot = (dx / dist) * fx + (dy / dist) * fy + (dz / dist) * fz;
+          if (dot >= cosAng) return true;
+        }
+        return false;
+      }
+
       for (const g of glueys) {
         if (!g.mesh || !g.mesh.visible) continue;
-        const dx = g.x - px, dy = g.y - py, dz = g.z - pz;
-        const dist2 = dx * dx + dy * dy + dz * dz;
-        if (dist2 >= 25) continue;
-        const dist = Math.sqrt(dist2);
-        const dot = (dx / dist) * fx + (dy / dist) * fy + (dz / dist) * fz;
-        if (dot < cosAng) continue;
+        if (!checkMobHit(g.x, g.y, g.z, 0.25, 0.75, 0.25)) continue;
         g.hp -= dmg; g.panicTimer = 10; g.flashTimer = 0.5; g.mesh.material.color.setHex(0xff0000);
         sel.durability[0]--;
         if (sel.durability[0] <= 0) { sel.count--; sel.durability.shift(); if (sel.count <= 0) { sel.type = null; sel.durability = []; } }
@@ -759,12 +770,7 @@
 
       for (const c of cartolines) {
         if (!c.mesh || !c.mesh.visible) continue;
-        const dx = c.x - px, dy = c.y - py, dz = c.z - pz;
-        const dist2 = dx * dx + dy * dy + dz * dz;
-        if (dist2 >= 25) continue;
-        const dist = Math.sqrt(dist2);
-        const dot = (dx / dist) * fx + (dy / dist) * fy + (dz / dist) * fz;
-        if (dot < cosAng) continue;
+        if (!checkMobHit(c.x, c.y, c.z, 0.8, 0.9, 0.05)) continue;
         c.hp -= dmg; c.flashTimer = 0.5; c.mesh.material.color.setHex(0xff0000);
         sel.durability[0]--;
         if (sel.durability[0] <= 0) { sel.count--; sel.durability.shift(); if (sel.count <= 0) { sel.type = null; sel.durability = []; } }

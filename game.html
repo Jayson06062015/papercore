@@ -302,6 +302,13 @@
       }
       return Math.max(1, Math.round(28 + n));
     }
+    function terrainHeightVinu(x, z) {
+      let n = 0;
+      for (const o of terrainOctaves) {
+        n += Math.sin(x * o.f * 0.7 + z * o.g * 0.7 + o.p * 1.5) * o.a * 3;
+      }
+      return Math.max(1, Math.round(35 + n));
+    }
 
     const blockTex = new THREE.TextureLoader().load('./Paper Block.png');
     blockTex.encoding = THREE.sRGBEncoding;
@@ -315,6 +322,14 @@
     const reinfTex = new THREE.TextureLoader().load('./Reinforced Paper Block.png');
     reinfTex.encoding = THREE.sRGBEncoding;
     const reinfMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: reinfTex, roughness: 0.6 });
+    const ashMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+    const vinuPowderMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+    const ashTex = new THREE.TextureLoader().load('./Ash Block.png');
+    ashTex.encoding = THREE.sRGBEncoding;
+    ashMat.map = ashTex;
+    const vinuTex = new THREE.TextureLoader().load('./Vinu Powder.png');
+    vinuTex.encoding = THREE.sRGBEncoding;
+    vinuPowderMat.map = vinuTex;
     const waterBallTex = new THREE.TextureLoader().load('./Water Ball.png');
     waterBallTex.encoding = THREE.sRGBEncoding;
     const waterBallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterBallTex, transparent: true });
@@ -330,6 +345,9 @@
     const chunkBuildQueue = [];
     let autoSaveTimer = 0;
     let autoSaveEnabled = true;
+    let currentDim = 'paperia';
+    let portalBeacon = null;
+    const DIM_OFFSET = 100000;
     function ensureChunk(cx, cz, cy) {
       const key = chunkKey(cx, cz, cy);
       let c = loadedChunks.get(key);
@@ -340,17 +358,22 @@
       const count = nx * nz * ny;
       const states = new Uint8Array(count);
       let i = 0;
+      const hFn = currentDim === 'vinu' ? terrainHeightVinu : terrainHeight;
       for (let x = sx; x < ex; x++) {
         for (let z = sz; z < ez; z++) {
-          const h = terrainHeight(x, z);
+          const h = hFn(x, z);
           for (let y = sy; y < ey; y++) {
-            states[i] = y >= h ? 0 : (Math.random() < 0.05 ? 2 : 1);
+            if (currentDim === 'vinu') {
+              states[i] = y >= h ? 0 : (Math.random() < 0.5 ? 6 : 7);
+            } else {
+              states[i] = y >= h ? 0 : (Math.random() < 0.05 ? 2 : 1);
+            }
             i++;
           }
         }
       }
       c = {
-        mesh: null, waterMesh: null, woodMesh: null, reinfMesh: null, states, nx, ny, nz, sx, sy, sz, cx, cy, cz,
+        mesh: null, waterMesh: null, woodMesh: null, reinfMesh: null, ashMesh: null, vinuMesh: null, states, nx, ny, nz, sx, sy, sz, cx, cy, cz,
         center: new THREE.Vector3(
           (sx + ex - 1) / 2 - halfX + 0.5,
           (sy + ey - 1) / 2 + 0.5,
@@ -372,10 +395,14 @@
       const waterMesh = new THREE.InstancedMesh(cubeGeo, waterMat, count);
       const woodMesh = new THREE.InstancedMesh(cubeGeo, woodMat, count);
       const reinfMesh = new THREE.InstancedMesh(cubeGeo, reinfMat, count);
+      const ashMesh = new THREE.InstancedMesh(cubeGeo, ashMat, count);
+      const vinuMesh = new THREE.InstancedMesh(cubeGeo, vinuPowderMat, count);
       mesh.receiveShadow = true; mesh.castShadow = true;
       waterMesh.receiveShadow = true; waterMesh.castShadow = true;
       woodMesh.receiveShadow = true; woodMesh.castShadow = true;
       reinfMesh.receiveShadow = true; reinfMesh.castShadow = true;
+      ashMesh.receiveShadow = true; ashMesh.castShadow = true;
+      vinuMesh.receiveShadow = true; vinuMesh.castShadow = true;
       const pm = new THREE.Matrix4();
       let i = 0;
       for (let x = sx; x < ex; x++) {
@@ -390,6 +417,8 @@
               waterMesh.setMatrixAt(i, pm);
               woodMesh.setMatrixAt(i, pm);
               reinfMesh.setMatrixAt(i, pm);
+              ashMesh.setMatrixAt(i, pm);
+              vinuMesh.setMatrixAt(i, pm);
             } else if (state === 2) {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               waterMesh.setMatrixAt(i, pm);
@@ -397,6 +426,8 @@
               mesh.setMatrixAt(i, pm);
               woodMesh.setMatrixAt(i, pm);
               reinfMesh.setMatrixAt(i, pm);
+              ashMesh.setMatrixAt(i, pm);
+              vinuMesh.setMatrixAt(i, pm);
             } else if (state === 3) {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               woodMesh.setMatrixAt(i, pm);
@@ -404,6 +435,8 @@
               mesh.setMatrixAt(i, pm);
               waterMesh.setMatrixAt(i, pm);
               reinfMesh.setMatrixAt(i, pm);
+              ashMesh.setMatrixAt(i, pm);
+              vinuMesh.setMatrixAt(i, pm);
             } else if (state === 4) {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               reinfMesh.setMatrixAt(i, pm);
@@ -411,12 +444,34 @@
               mesh.setMatrixAt(i, pm);
               waterMesh.setMatrixAt(i, pm);
               woodMesh.setMatrixAt(i, pm);
+              ashMesh.setMatrixAt(i, pm);
+              vinuMesh.setMatrixAt(i, pm);
             } else if (state === 5) {
               te[0]=0;te[5]=0;te[10]=0;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               mesh.setMatrixAt(i, pm);
               waterMesh.setMatrixAt(i, pm);
               woodMesh.setMatrixAt(i, pm);
               reinfMesh.setMatrixAt(i, pm);
+              ashMesh.setMatrixAt(i, pm);
+              vinuMesh.setMatrixAt(i, pm);
+            } else if (state === 6) {
+              te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+              ashMesh.setMatrixAt(i, pm);
+              te[0]=0;te[5]=0;te[10]=0;
+              mesh.setMatrixAt(i, pm);
+              waterMesh.setMatrixAt(i, pm);
+              woodMesh.setMatrixAt(i, pm);
+              reinfMesh.setMatrixAt(i, pm);
+              vinuMesh.setMatrixAt(i, pm);
+            } else if (state === 7) {
+              te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+              vinuMesh.setMatrixAt(i, pm);
+              te[0]=0;te[5]=0;te[10]=0;
+              mesh.setMatrixAt(i, pm);
+              waterMesh.setMatrixAt(i, pm);
+              woodMesh.setMatrixAt(i, pm);
+              reinfMesh.setMatrixAt(i, pm);
+              ashMesh.setMatrixAt(i, pm);
             } else {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               mesh.setMatrixAt(i, pm);
@@ -424,6 +479,8 @@
               waterMesh.setMatrixAt(i, pm);
               woodMesh.setMatrixAt(i, pm);
               reinfMesh.setMatrixAt(i, pm);
+              ashMesh.setMatrixAt(i, pm);
+              vinuMesh.setMatrixAt(i, pm);
             }
             i++;
           }
@@ -433,29 +490,41 @@
       waterMesh.instanceMatrix.needsUpdate = true;
       woodMesh.instanceMatrix.needsUpdate = true;
       reinfMesh.instanceMatrix.needsUpdate = true;
+      ashMesh.instanceMatrix.needsUpdate = true;
+      vinuMesh.instanceMatrix.needsUpdate = true;
       const colArr = new Float32Array(count * 3);
       const waterColArr = new Float32Array(count * 3);
       const woodColArr = new Float32Array(count * 3);
       const reinfColArr = new Float32Array(count * 3);
+      const ashColArr = new Float32Array(count * 3);
+      const vinuColArr = new Float32Array(count * 3);
       for (let ci = 0; ci < count; ci++) {
         const i3 = ci * 3;
         colArr[i3]=1; colArr[i3+1]=1; colArr[i3+2]=1;
         waterColArr[i3]=1; waterColArr[i3+1]=1; waterColArr[i3+2]=1;
         woodColArr[i3]=1; woodColArr[i3+1]=1; woodColArr[i3+2]=1;
         reinfColArr[i3]=1; reinfColArr[i3+1]=1; reinfColArr[i3+2]=1;
+        ashColArr[i3]=1; ashColArr[i3+1]=1; ashColArr[i3+2]=1;
+        vinuColArr[i3]=1; vinuColArr[i3+1]=1; vinuColArr[i3+2]=1;
       }
       mesh.instanceColor = new THREE.InstancedBufferAttribute(colArr, 3);
       waterMesh.instanceColor = new THREE.InstancedBufferAttribute(waterColArr, 3);
       woodMesh.instanceColor = new THREE.InstancedBufferAttribute(woodColArr, 3);
       reinfMesh.instanceColor = new THREE.InstancedBufferAttribute(reinfColArr, 3);
+      ashMesh.instanceColor = new THREE.InstancedBufferAttribute(ashColArr, 3);
+      vinuMesh.instanceColor = new THREE.InstancedBufferAttribute(vinuColArr, 3);
       scene.add(mesh);
       scene.add(waterMesh);
       scene.add(woodMesh);
       scene.add(reinfMesh);
+      scene.add(ashMesh);
+      scene.add(vinuMesh);
       c.mesh = mesh;
       c.waterMesh = waterMesh;
       c.woodMesh = woodMesh;
       c.reinfMesh = reinfMesh;
+      c.ashMesh = ashMesh;
+      c.vinuMesh = vinuMesh;
     }
     function ensureChunkSync(cx, cz, cy) {
       const c = ensureChunk(cx, cz, cy);
@@ -499,15 +568,17 @@
     }
     let glueys = [];
     let glueySpawnTimer = 0;
-    for (let gi = 0; gi < 15; gi++) {
-      const a = Math.random() * Math.PI * 2;
-      const d = 5 + Math.random() * 20;
-      const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
-      const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
-      const mesh = glueyMeshes[gi];
-      const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 5, panicTimer: 0, flashTimer: 0 };
-      if (mesh) { mesh.position.set(sx, sy + 0.75, sz); mesh.visible = true; }
-      glueys.push(g);
+    if (currentDim === 'paperia') {
+      for (let gi = 0; gi < 15; gi++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = 5 + Math.random() * 20;
+        const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
+        const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
+        const mesh = glueyMeshes[gi];
+        const g = { x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 5, panicTimer: 0, flashTimer: 0 };
+        if (mesh) { mesh.position.set(sx, sy + 0.75, sz); mesh.visible = true; }
+        glueys.push(g);
+      }
     }
     const cartolineTex = new THREE.TextureLoader().load('./Cartoline.png');
     cartolineTex.encoding = THREE.sRGBEncoding;
@@ -524,15 +595,17 @@
     }
     let cartolines = [];
     let cartolineSpawnTimer = 0;
-    for (let ci = 0; ci < 3; ci++) {
-      const a = Math.random() * Math.PI * 2;
-      const d = 10 + Math.random() * 30;
-      const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
-      const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
-      const mesh = cartolineMeshes[ci];
-      const c = { x: sx, y: sy + 0.9, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 20, throwCooldown: Math.random() * 3, flashTimer: 0 };
-      if (mesh) { mesh.position.set(sx, sy + 0.9, sz); mesh.visible = true; }
-      cartolines.push(c);
+    if (currentDim === 'paperia') {
+      for (let ci = 0; ci < 3; ci++) {
+        const a = Math.random() * Math.PI * 2;
+        const d = 10 + Math.random() * 30;
+        const sx = Math.cos(a) * d, sz = Math.sin(a) * d;
+        const sy = terrainHeight(Math.floor(sx + halfX), Math.floor(sz + halfZ));
+        const mesh = cartolineMeshes[ci];
+        const c = { x: sx, y: sy + 0.9, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh, hp: 20, throwCooldown: Math.random() * 3, flashTimer: 0 };
+        if (mesh) { mesh.position.set(sx, sy + 0.9, sz); mesh.visible = true; }
+        cartolines.push(c);
+      }
     }
     const startCX = Math.floor((playerBody.position.x + halfX) / CHUNK);
     const startCZ = Math.floor((playerBody.position.z + halfZ) / CHUNK);
@@ -651,6 +724,20 @@
       scene.add(m);
       beaconDropPool.push(m);
     }
+    const ASH_DROP_POOL = 40;
+    const ashDropPool = [];
+    const vinuDropPool = [];
+    const dropGeo = new THREE.BoxGeometry(0.3, 0.08, 0.3);
+    for (let i = 0; i < ASH_DROP_POOL; i++) {
+      const am = new THREE.Mesh(dropGeo, ashMat);
+      am.visible = false;
+      scene.add(am);
+      ashDropPool.push(am);
+      const vm = new THREE.Mesh(dropGeo, vinuPowderMat);
+      vm.visible = false;
+      scene.add(vm);
+      vinuDropPool.push(vm);
+    }
 
     function isSolidBlock(bx, bz, by) {
       if (by < 0 || by >= gridY) return false;
@@ -694,12 +781,12 @@
       const bp = idxToWorldPos(chunk, localId);
       const state = chunk.states[localId];
       chunk.states[localId] = 0;
-      for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh]) {
+      for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh, chunk.ashMesh, chunk.vinuMesh]) {
         if (m) { m.setColorAt(localId, white); m.instanceColor.needsUpdate = true; }
       }
       const te = tempMat.elements;
       te[0]=0;te[5]=0;te[10]=0;te[12]=bp.x;te[13]=bp.y;te[14]=bp.z;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
-      for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh]) {
+      for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh, chunk.ashMesh, chunk.vinuMesh]) {
         if (m) { m.setMatrixAt(localId, tempMat); m.instanceMatrix.needsUpdate = true; }
       }
 
@@ -717,6 +804,20 @@
           mesh.position.set(bp.x, bp.y + 0.5, bp.z);
           mesh.visible = true;
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'beacon' });
+        }
+      } else if (state === 6) {
+        const mesh = freePoolMesh(ashDropPool);
+        if (mesh) {
+          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+          mesh.visible = true;
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'ash_block' });
+        }
+      } else if (state === 7) {
+        const mesh = freePoolMesh(vinuDropPool);
+        if (mesh) {
+          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+          mesh.visible = true;
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'vinu_powder' });
         }
       } else if (state === 2) {
         const dropCount = 1 + Math.floor(Math.random() * 3);
@@ -892,6 +993,7 @@
           inventory: inventory.map(s => ({ type: s.type, count: s.count, durability: [...s.durability] })),
           selectedSlot
         },
+        dim: currentDim,
         chunks: [],
         glueys: glueys.map(g => ({ x: g.x, y: g.y, z: g.z, vy: g.vy, onGround: g.onGround, moveTimer: g.moveTimer, dirX: g.dirX, dirZ: g.dirZ, hp: g.hp, panicTimer: g.panicTimer })),
         cartolines: cartolines.map(c => ({ x: c.x, y: c.y, z: c.z, vy: c.vy, onGround: c.onGround, moveTimer: c.moveTimer, dirX: c.dirX, dirZ: c.dirZ, hp: c.hp, throwCooldown: c.throwCooldown })),
@@ -918,6 +1020,8 @@
           if (c.waterMesh) scene.remove(c.waterMesh);
           if (c.woodMesh) scene.remove(c.woodMesh);
           if (c.reinfMesh) scene.remove(c.reinfMesh);
+          if (c.ashMesh) scene.remove(c.ashMesh);
+          if (c.vinuMesh) scene.remove(c.vinuMesh);
         }
         loadedChunks.clear();
         chunkBuildQueue.length = 0;
@@ -929,7 +1033,7 @@
             const sx = cd.cx * CHUNK, sz = cd.cz * CHUNK, sy = cd.cy * CHUNK;
             const ex = sx + CHUNK, ez = sz + CHUNK, ey = Math.min(sy + CHUNK, gridY);
             const nx = CHUNK, nz = CHUNK, ny = ey - sy;
-            chunk = { mesh: null, waterMesh: null, woodMesh: null, reinfMesh: null, states: null, nx, ny, nz, sx, sy, sz, cx: cd.cx, cy: cd.cy, cz: cd.cz, center: new THREE.Vector3((sx + ex - 1) / 2 - halfX + 0.5, (sy + ey - 1) / 2 + 0.5, (sz + ez - 1) / 2 - halfZ + 0.5), isFar: false, key: key };
+            chunk = { mesh: null, waterMesh: null, woodMesh: null, reinfMesh: null, ashMesh: null, vinuMesh: null, states: null, nx, ny, nz, sx, sy, sz, cx: cd.cx, cy: cd.cy, cz: cd.cz, center: new THREE.Vector3((sx + ex - 1) / 2 - halfX + 0.5, (sy + ey - 1) / 2 + 0.5, (sz + ez - 1) / 2 - halfZ + 0.5), isFar: false, key: key };
             loadedChunks.set(key, chunk);
           }
           chunk.sy = cd.sy;
@@ -942,6 +1046,7 @@
         pitch = data.player.pitch;
         inventory = data.player.inventory.map(s => ({ type: s.type, count: s.count, durability: [...(s.durability||[])] }));
         selectedSlot = data.player.selectedSlot;
+        currentDim = data.dim || 'paperia';
         glueys = data.glueys.map(gd => {
           const mesh = glueyMeshes.find(m => !m.visible);
           if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(gd.x, gd.y, gd.z); mesh.visible = true; }
@@ -987,7 +1092,7 @@
       if (!hits.length) return;
       const hitObj = hits[0].object;
       let chunk = null;
-      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj) { chunk = c; break; } }
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj) { chunk = c; break; } }
       let bx, by, bz;
       if (chunk) {
         const hi = hits[0].instanceId;
@@ -1037,8 +1142,10 @@
       const isPaper = sel.type === 'paper_block';
       const isWood = sel.type === 'wood_plank';
       const isReinf = sel.type === 'reinforced_block';
+      const isAsh = sel.type === 'ash_block';
+      const isVinu = sel.type === 'vinu_powder';
       if (sel.type === 'beacon') { tryPlaceBeacon(); return; }
-      if (!isPaper && !isWater && !isWood && !isReinf) return;
+      if (!isPaper && !isWater && !isWood && !isReinf && !isAsh && !isVinu) return;
       raycaster.setFromCamera({ x: 0, y: 0 }, camera);
       const hits = raycaster.intersectObjects(visibleMeshes);
       if (!hits.length) return;
@@ -1083,20 +1190,63 @@
         te[0]=0;te[5]=0;te[10]=0;
         for (const m of [pChunk.mesh, pChunk.woodMesh, pChunk.reinfMesh]) { if (m) { m.setMatrixAt(pId, tempMat); m.instanceMatrix.needsUpdate = true; } }
       } else {
-        const state = isWood ? 3 : (isReinf ? 4 : 1);
-        const itemType = isWood ? 'wood_plank' : (isReinf ? 'reinforced_block' : 'paper_block');
+        const state = isWood ? 3 : (isReinf ? 4 : (isAsh ? 6 : (isVinu ? 7 : 1)));
+        const itemType = isWood ? 'wood_plank' : (isReinf ? 'reinforced_block' : (isAsh ? 'ash_block' : (isVinu ? 'vinu_powder' : 'paper_block')));
         removeItems(itemType, 1);
         pChunk.states[pId] = state;
         const w = bx - halfX + 0.5, h = by + 0.5, d = bz - halfZ + 0.5;
         const te = tempMat.elements;
         te[0]=1;te[5]=1;te[10]=1;te[12]=w;te[13]=h;te[14]=d;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
-        const showMesh = isWood ? pChunk.woodMesh : (isReinf ? pChunk.reinfMesh : pChunk.mesh);
+        const showMesh = isWood ? pChunk.woodMesh : (isReinf ? pChunk.reinfMesh : (isAsh ? pChunk.ashMesh : (isVinu ? pChunk.vinuMesh : pChunk.mesh)));
         showMesh.setMatrixAt(pId, tempMat);
         showMesh.instanceMatrix.needsUpdate = true;
         te[0]=0;te[5]=0;te[10]=0;
-        for (const m of [pChunk.mesh, pChunk.waterMesh, pChunk.woodMesh, pChunk.reinfMesh]) {
+        for (const m of [pChunk.mesh, pChunk.waterMesh, pChunk.woodMesh, pChunk.reinfMesh, pChunk.ashMesh, pChunk.vinuMesh]) {
           if (m && m !== showMesh) { m.setMatrixAt(pId, tempMat); m.instanceMatrix.needsUpdate = true; }
         }
+      }
+    }
+    function switchDimension() {
+      if (currentDim === 'paperia') {
+        loadedChunks.clear();
+        chunkBuildQueue.length = 0;
+        visibleMeshes.length = 0;
+        for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
+        for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
+        for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
+        glueys.length = 0;
+        cartolines.length = 0;
+        projectiles.length = 0;
+        beacons.length = 0;
+        scrapItems.length = 0;
+        currentDim = 'vinu';
+        playerBody.position.x += DIM_OFFSET;
+        playerBody.position.z = 0;
+        playerBody.position.y = terrainHeightVinu(Math.floor(playerBody.position.x), 0) + 3;
+        const wx = playerBody.position.x, wy = playerBody.position.y - 1, wz = playerBody.position.z + 2;
+        for (let i = 0; i < BEACON_POOL; i++) {
+          const bm = beaconBaseMeshes[i];
+          if (bm.visible) continue;
+          bm.position.set(wx, wy, wz);
+          bm.visible = true;
+          const bbm = beaconBeamMeshes[i];
+          bbm.position.set(wx, wy + 0.5 + 500, wz);
+          bbm.visible = true;
+          portalBeacon = { x: wx, y: wy, z: wz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 };
+          break;
+        }
+      } else {
+        loadedChunks.clear();
+        chunkBuildQueue.length = 0;
+        visibleMeshes.length = 0;
+        for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
+        beacons.length = 0;
+        projectiles.length = 0;
+        scrapItems.length = 0;
+        if (portalBeacon) { portalBeacon.baseMesh.visible = false; portalBeacon.beamMesh.visible = false; portalBeacon = null; }
+        currentDim = 'paperia';
+        playerBody.position.x -= DIM_OFFSET;
+        playerBody.position.y = terrainHeight(Math.floor(playerBody.position.x), Math.floor(playerBody.position.z)) + 3;
       }
     }
     renderer.domElement.addEventListener('mousedown', (e) => {
@@ -1487,7 +1637,9 @@
       wood_plank:'./Wood Plank.png',
       cardboard_club:'./Cardboard Club.png',
       wood_club:'./Wood Club.png',
-      beacon:'./Beacon.png'
+      beacon:'./Beacon.png',
+      ash_block:'./Ash Block.png',
+      vinu_powder:'./Vinu Powder.png'
     };
 
     function updateSlot(i) {
@@ -2082,7 +2234,7 @@
         return false;
       }
       glueySpawnTimer += dt;
-      if (glueySpawnTimer > 3 && glueys.length < 15) {
+      if (currentDim === 'paperia' && glueySpawnTimer > 3 && glueys.length < 15) {
         glueySpawnTimer = 0;
         const freeMesh = glueyMeshes.find(m => !m.visible);
         if (freeMesh) {
@@ -2187,7 +2339,7 @@
 
       // Cartoline system
       cartolineSpawnTimer += dt;
-      if (cartolineSpawnTimer > 5 && cartolines.length < 5) {
+      if (currentDim === 'paperia' && cartolineSpawnTimer > 5 && cartolines.length < 5) {
         cartolineSpawnTimer = 0;
         const freeMesh = cartolineMeshes.find(m => !m.visible);
         if (freeMesh) {
@@ -2327,7 +2479,7 @@
           if (hits.length) {
             const hitObj = hits[0].object;
             let chunk = null;
-            for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj) { chunk = c; break; } }
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj) { chunk = c; break; } }
             if (chunk) {
               const hid = hits[0].instanceId;
               if (chunk.states[hid] === 1 && distToBlock(chunk, hid) <= 5) {
@@ -2360,6 +2512,18 @@
                 breakProgress = 0;
                 breakDuration = 10;
                 breakMesh = null;
+              } else if (chunk.states[hid] === 6 && distToBlock(chunk, hid) <= 5) {
+                breakChunk = chunk;
+                breakId = hid;
+                breakProgress = 0;
+                breakDuration = 2;
+                breakMesh = chunk.ashMesh;
+              } else if (chunk.states[hid] === 7 && distToBlock(chunk, hid) <= 5) {
+                breakChunk = chunk;
+                breakId = hid;
+                breakProgress = 0;
+                breakDuration = 2;
+                breakMesh = chunk.vinuMesh;
               }
             } else {
               const beaconHit = beacons.find(b => b.baseMesh === hitObj);
@@ -2402,6 +2566,19 @@
         b.angle += dt * 0.8;
         b.beamMesh.rotation.y = b.angle;
       }
+      if (currentDim === 'paperia') {
+        const pp = playerBody.position;
+        for (const b of beacons) {
+          if (Math.abs(pp.x - b.x) < 0.5 && Math.abs(pp.z - b.z) < 0.5 && pp.y > b.y + 0.5 - 0.45 && pp.y < b.y + 1000.5 + 0.45) {
+            switchDimension(); break;
+          }
+        }
+      } else if (currentDim === 'vinu' && portalBeacon) {
+        const pp = playerBody.position;
+        if (Math.abs(pp.x - portalBeacon.x) < 0.5 && Math.abs(pp.z - portalBeacon.z) < 0.5 && pp.y > portalBeacon.y + 0.5 - 0.45 && pp.y < portalBeacon.y + 1000.5 + 0.45) {
+          switchDimension();
+        }
+      }
 
       if ((fpsFrames % 10) === 0) {
         const pCX = Math.floor((playerBody.position.x + halfX) / CHUNK);
@@ -2438,11 +2615,15 @@
           if (c.waterMesh) c.waterMesh.visible = !far;
           if (c.woodMesh) c.woodMesh.visible = !far;
           if (c.reinfMesh) c.reinfMesh.visible = !far;
+          if (c.ashMesh) c.ashMesh.visible = !far;
+          if (c.vinuMesh) c.vinuMesh.visible = !far;
           if (!far) {
             visibleMeshes.push(c.mesh);
             if (c.waterMesh) visibleMeshes.push(c.waterMesh);
             if (c.woodMesh) visibleMeshes.push(c.woodMesh);
             if (c.reinfMesh) visibleMeshes.push(c.reinfMesh);
+            if (c.ashMesh) visibleMeshes.push(c.ashMesh);
+            if (c.vinuMesh) visibleMeshes.push(c.vinuMesh);
           }
         }
         for (const b of beacons) { visibleMeshes.push(b.baseMesh); }

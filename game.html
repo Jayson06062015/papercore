@@ -1952,6 +1952,13 @@
           g.dirX = Math.cos(a2);
           g.dirZ = Math.sin(a2);
         }
+        const held = inventory[selectedSlot];
+        if (held && held.type === 'glue' && held.count > 0) {
+          const dx = playerBody.position.x - g.x, dz = playerBody.position.z - g.z;
+          const d = Math.sqrt(dx * dx + dz * dz) || 1;
+          g.dirX = dx / d;
+          g.dirZ = dz / d;
+        }
         if (g.onGround && Math.random() < jumpChance * dt) {
           g.vy = 7;
           g.onGround = false;

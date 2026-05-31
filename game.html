@@ -620,7 +620,7 @@
       woodDropPool.push(m);
     }
     const beaconBeamMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, emissive: 0xffffff, emissiveIntensity: 0.3 });
-    const beaconBeamGeo = new THREE.BoxGeometry(0.667, 1000, 0.667);
+    const beaconBeamGeo = new THREE.BoxGeometry(0.5, 1000, 0.5);
     const beaconTex = new THREE.TextureLoader().load('./Beacon.png');
     beaconTex.encoding = THREE.sRGBEncoding;
     const beaconBaseMat = new THREE.MeshStandardMaterial({ map: beaconTex, transparent: true });
@@ -647,7 +647,11 @@
       const ch = getChunk(cxc, czc, cyc);
       if (!ch) return false;
       const id = chunkLocalIdx(ch, bx, bz, by);
-      return id >= 0 && id < ch.states.length && ch.states[id] !== 0;
+      if (id >= 0 && id < ch.states.length && ch.states[id] !== 0) return true;
+      for (const b of beacons) {
+        if (b.bx === bx && b.by === by && b.bz === bz) return true;
+      }
+      return false;
     }
 
     function playerCollidesAt(px, py, pz, aboveCenter) {
@@ -954,9 +958,7 @@
       const pChunk = ensureChunkSync(cxc, czc, cyc);
       const pId = chunkLocalIdx(pChunk, bx, bz, by);
       if (pChunk.states[pId] !== 0) return;
-      for (const b of beacons) {
-        if (Math.abs(b.x - (bx - halfX + 0.5)) < 0.1 && Math.abs(b.y - (by + 0.5)) < 0.1 && Math.abs(b.z - (bz - halfZ + 0.5)) < 0.1) return;
-      }
+      for (const b of beacons) { if (b.bx === bx && b.by === by && b.bz === bz) return; }
       for (let i = 0; i < BEACON_POOL; i++) {
         const bm = beaconBaseMeshes[i];
         if (bm.visible) continue;
@@ -966,7 +968,7 @@
         const bbm = beaconBeamMeshes[i];
         bbm.position.set(wx, wy + 0.5 + 500, wz);
         bbm.visible = true;
-        beacons.push({ x: wx, y: wy, z: wz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
+        beacons.push({ x: wx, y: wy, z: wz, bx, by, bz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
         removeItems('beacon', 1);
         return;
       }
@@ -1002,6 +1004,7 @@
       const pChunk = ensureChunkSync(cxc, czc, cyc);
       const pId = chunkLocalIdx(pChunk, bx, bz, by);
       if (pChunk.states[pId] !== 0) return;
+      for (const b of beacons) { if (b.bx === bx && b.by === by && b.bz === bz) return; }
       if (isWater) {
         removeItems('water_block', 1);
         pChunk.states[pId] = 2;

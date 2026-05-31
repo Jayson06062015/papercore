@@ -871,7 +871,8 @@
         },
         chunks: [],
         glueys: glueys.map(g => ({ x: g.x, y: g.y, z: g.z, vy: g.vy, onGround: g.onGround, moveTimer: g.moveTimer, dirX: g.dirX, dirZ: g.dirZ, hp: g.hp, panicTimer: g.panicTimer })),
-        cartolines: cartolines.map(c => ({ x: c.x, y: c.y, z: c.z, vy: c.vy, onGround: c.onGround, moveTimer: c.moveTimer, dirX: c.dirX, dirZ: c.dirZ, hp: c.hp, throwCooldown: c.throwCooldown }))
+        cartolines: cartolines.map(c => ({ x: c.x, y: c.y, z: c.z, vy: c.vy, onGround: c.onGround, moveTimer: c.moveTimer, dirX: c.dirX, dirZ: c.dirZ, hp: c.hp, throwCooldown: c.throwCooldown })),
+        beacons: beacons.map(b => ({ bx: b.bx, by: b.by, bz: b.bz }))
       };
       for (const chunk of loadedChunks.values()) {
         data.chunks.push({ cx: chunk.cx, cy: chunk.cy, cz: chunk.cz, sy: chunk.sy, states: Array.from(chunk.states) });
@@ -888,6 +889,8 @@
         const data = JSON.parse(raw);
         for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
         for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
+        for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
+        beacons.length = 0;
         for (const [key, c] of loadedChunks) {
           if (c.mesh) scene.remove(c.mesh);
           if (c.waterMesh) scene.remove(c.waterMesh);
@@ -927,6 +930,22 @@
           if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(cd.x, cd.y, cd.z); mesh.visible = true; }
           return { ...cd, mesh: mesh || null, flashTimer: 0 };
         });
+        if (data.beacons) {
+          for (const bd of data.beacons) {
+            for (let i = 0; i < BEACON_POOL; i++) {
+              const bm = beaconBaseMeshes[i];
+              if (bm.visible) continue;
+              const wx = bd.bx - halfX + 0.5, wy = bd.by + 0.5, wz = bd.bz - halfZ + 0.5;
+              bm.position.set(wx, wy, wz);
+              bm.visible = true;
+              const bbm = beaconBeamMeshes[i];
+              bbm.position.set(wx, wy + 0.5 + 500, wz);
+              bbm.visible = true;
+              beacons.push({ x: wx, y: wy, z: wz, bx: bd.bx, by: bd.by, bz: bd.bz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
+              break;
+            }
+          }
+        }
         updateInventoryUI();
         for (let i = 0; i < inventory.length; i++) updateSlot(i);
         updateHealthDisplay();

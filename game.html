@@ -411,6 +411,12 @@
               mesh.setMatrixAt(i, pm);
               waterMesh.setMatrixAt(i, pm);
               woodMesh.setMatrixAt(i, pm);
+            } else if (state === 5) {
+              te[0]=0;te[5]=0;te[10]=0;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+              mesh.setMatrixAt(i, pm);
+              waterMesh.setMatrixAt(i, pm);
+              woodMesh.setMatrixAt(i, pm);
+              reinfMesh.setMatrixAt(i, pm);
             } else {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               mesh.setMatrixAt(i, pm);
@@ -631,13 +637,19 @@
     const beaconBeamMeshes = [];
     for (let i = 0; i < BEACON_POOL; i++) {
       const bm = new THREE.Mesh(beaconBaseGeo, beaconBaseMat);
-      bm.visible = false;
-      scene.add(bm);
+      bm.visible = false; scene.add(bm);
       beaconBaseMeshes.push(bm);
       const bbm = new THREE.Mesh(beaconBeamGeo, beaconBeamMat);
-      bbm.visible = false;
-      scene.add(bbm);
+      bbm.visible = false; scene.add(bbm);
       beaconBeamMeshes.push(bbm);
+    }
+    const BEACON_DROP_POOL = 10;
+    const beaconDropPool = [];
+    for (let i = 0; i < BEACON_DROP_POOL; i++) {
+      const m = new THREE.Mesh(beaconBaseGeo, beaconBaseMat);
+      m.visible = false;
+      scene.add(m);
+      beaconDropPool.push(m);
     }
 
     function isSolidBlock(bx, bz, by) {
@@ -647,11 +659,7 @@
       const ch = getChunk(cxc, czc, cyc);
       if (!ch) return false;
       const id = chunkLocalIdx(ch, bx, bz, by);
-      if (id >= 0 && id < ch.states.length && ch.states[id] !== 0) return true;
-      for (const b of beacons) {
-        if (b.bx === bx && b.by === by && b.bz === bz) return true;
-      }
-      return false;
+      return id >= 0 && id < ch.states.length && ch.states[id] !== 0;
     }
 
     function playerCollidesAt(px, py, pz, aboveCenter) {
@@ -695,7 +703,22 @@
         if (m) { m.setMatrixAt(localId, tempMat); m.instanceMatrix.needsUpdate = true; }
       }
 
-      if (state === 2) {
+      if (state === 5) {
+        for (let bi = 0; bi < beacons.length; bi++) {
+          const b = beacons[bi];
+          if (b.bx === Math.round(bp.x + halfX - 0.5) && b.by === Math.round(bp.y - 0.5) && b.bz === Math.round(bp.z + halfZ - 0.5)) {
+            b.baseMesh.visible = false; b.beamMesh.visible = false;
+            beacons.splice(bi, 1);
+            break;
+          }
+        }
+        const mesh = freePoolMesh(beaconDropPool);
+        if (mesh) {
+          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+          mesh.visible = true;
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'beacon' });
+        }
+      } else if (state === 2) {
         const dropCount = 1 + Math.floor(Math.random() * 3);
         for (let s = 0; s < dropCount; s++) {
           const mesh = freePoolMesh(waterBallPool);
@@ -872,7 +895,6 @@
         chunks: [],
         glueys: glueys.map(g => ({ x: g.x, y: g.y, z: g.z, vy: g.vy, onGround: g.onGround, moveTimer: g.moveTimer, dirX: g.dirX, dirZ: g.dirZ, hp: g.hp, panicTimer: g.panicTimer })),
         cartolines: cartolines.map(c => ({ x: c.x, y: c.y, z: c.z, vy: c.vy, onGround: c.onGround, moveTimer: c.moveTimer, dirX: c.dirX, dirZ: c.dirZ, hp: c.hp, throwCooldown: c.throwCooldown })),
-        beacons: beacons.map(b => ({ bx: b.bx, by: b.by, bz: b.bz }))
       };
       for (const chunk of loadedChunks.values()) {
         data.chunks.push({ cx: chunk.cx, cy: chunk.cy, cz: chunk.cz, sy: chunk.sy, states: Array.from(chunk.states) });
@@ -930,19 +952,24 @@
           if (mesh) { mesh.material.color.setHex(0xffffff); mesh.position.set(cd.x, cd.y, cd.z); mesh.visible = true; }
           return { ...cd, mesh: mesh || null, flashTimer: 0 };
         });
-        if (data.beacons) {
-          for (const bd of data.beacons) {
-            for (let i = 0; i < BEACON_POOL; i++) {
-              const bm = beaconBaseMeshes[i];
-              if (bm.visible) continue;
-              const wx = bd.bx - halfX + 0.5, wy = bd.by + 0.5, wz = bd.bz - halfZ + 0.5;
-              bm.position.set(wx, wy, wz);
-              bm.visible = true;
-              const bbm = beaconBeamMeshes[i];
-              bbm.position.set(wx, wy + 0.5 + 500, wz);
-              bbm.visible = true;
-              beacons.push({ x: wx, y: wy, z: wz, bx: bd.bx, by: bd.by, bz: bd.bz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
-              break;
+        for (const [key, c] of loadedChunks) {
+          const ny = c.ny, nx = c.nx, nz = c.nz;
+          for (let i = 0; i < c.states.length; i++) {
+            if (c.states[i] === 5) {
+              const lx = i % nx, lz = Math.floor(i / nx) % nz, ly = Math.floor(i / (nx * nz));
+              const wx = lx + c.sx - halfX + 0.5, wy = ly + c.sy + 0.5, wz = lz + c.sz - halfZ + 0.5;
+              const bx = lx + c.sx, by = ly + c.sy, bz = lz + c.sz;
+              for (let j = 0; j < BEACON_POOL; j++) {
+                const bm = beaconBaseMeshes[j];
+                if (bm.visible) continue;
+                bm.position.set(wx, wy, wz);
+                bm.visible = true;
+                const bbm = beaconBeamMeshes[j];
+                bbm.position.set(wx, wy + 0.5 + 500, wz);
+                bbm.visible = true;
+                beacons.push({ x: wx, y: wy, z: wz, bx, by, bz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
+                break;
+              }
             }
           }
         }
@@ -961,15 +988,26 @@
       const hitObj = hits[0].object;
       let chunk = null;
       for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj) { chunk = c; break; } }
-      if (!chunk) return;
-      const hi = hits[0].instanceId;
-      const bp = idxToWorldPos(chunk, hi);
-      if (Math.sqrt((playerBody.position.x-bp.x)**2+(playerBody.position.y-bp.y)**2+(playerBody.position.z-bp.z)**2) > 5) return;
-      const fn = hits[0].face.normal;
-      const nx = Math.round(fn.x), ny = Math.round(fn.y), nz = Math.round(fn.z);
-      const bx = Math.round(bp.x + halfX - 0.5) + nx;
-      const by = Math.round(bp.y - 0.5) + ny;
-      const bz = Math.round(bp.z + halfZ - 0.5) + nz;
+      let bx, by, bz;
+      if (chunk) {
+        const hi = hits[0].instanceId;
+        const bp = idxToWorldPos(chunk, hi);
+        if (Math.sqrt((playerBody.position.x-bp.x)**2+(playerBody.position.y-bp.y)**2+(playerBody.position.z-bp.z)**2) > 5) return;
+        const fn = hits[0].face.normal;
+        const nx = Math.round(fn.x), ny = Math.round(fn.y), nz = Math.round(fn.z);
+        bx = Math.round(bp.x + halfX - 0.5) + nx;
+        by = Math.round(bp.y - 0.5) + ny;
+        bz = Math.round(bp.z + halfZ - 0.5) + nz;
+      } else {
+        const beaconHit = beacons.find(b => b.baseMesh === hitObj);
+        if (!beaconHit || !hits[0].face) return;
+        if (Math.sqrt((playerBody.position.x-beaconHit.bx+halfX-0.5)**2+(playerBody.position.y-beaconHit.by-0.5)**2+(playerBody.position.z-beaconHit.bz+halfZ-0.5)**2) > 5) return;
+        const fn = hits[0].face.normal;
+        const nx = Math.round(fn.x), ny = Math.round(fn.y), nz = Math.round(fn.z);
+        bx = beaconHit.bx + nx;
+        by = beaconHit.by + ny;
+        bz = beaconHit.bz + nz;
+      }
       if (by < 0 || by >= gridY) return;
       const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
       if ((px-0.4) < (bx-halfX+1) && (px+0.4) > (bx-halfX) && (py-0.45) < (by+1) && (py+0.45) > by && (pz-0.05) < (bz-halfZ+1) && (pz+0.05) > (bz-halfZ)) return;
@@ -977,7 +1015,7 @@
       const pChunk = ensureChunkSync(cxc, czc, cyc);
       const pId = chunkLocalIdx(pChunk, bx, bz, by);
       if (pChunk.states[pId] !== 0) return;
-      for (const b of beacons) { if (b.bx === bx && b.by === by && b.bz === bz) return; }
+      pChunk.states[pId] = 5;
       for (let i = 0; i < BEACON_POOL; i++) {
         const bm = beaconBaseMeshes[i];
         if (bm.visible) continue;
@@ -1007,15 +1045,26 @@
       const hitObj = hits[0].object;
       let chunk = null;
       for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj) { chunk = c; break; } }
-      if (!chunk) return;
-      const hi = hits[0].instanceId;
-      const bp = idxToWorldPos(chunk, hi);
-      if (Math.sqrt((playerBody.position.x-bp.x)**2+(playerBody.position.y-bp.y)**2+(playerBody.position.z-bp.z)**2) > 5) return;
-      const fn = hits[0].face.normal;
-      const nx = Math.round(fn.x), ny = Math.round(fn.y), nz = Math.round(fn.z);
-      const bx = Math.round(bp.x + halfX - 0.5) + nx;
-      const by = Math.round(bp.y - 0.5) + ny;
-      const bz = Math.round(bp.z + halfZ - 0.5) + nz;
+      let bx, by, bz;
+      if (chunk) {
+        const hi = hits[0].instanceId;
+        const bp = idxToWorldPos(chunk, hi);
+        if (Math.sqrt((playerBody.position.x-bp.x)**2+(playerBody.position.y-bp.y)**2+(playerBody.position.z-bp.z)**2) > 5) return;
+        const fn = hits[0].face.normal;
+        const nx = Math.round(fn.x), ny = Math.round(fn.y), nz = Math.round(fn.z);
+        bx = Math.round(bp.x + halfX - 0.5) + nx;
+        by = Math.round(bp.y - 0.5) + ny;
+        bz = Math.round(bp.z + halfZ - 0.5) + nz;
+      } else {
+        const beaconHit = beacons.find(b => b.baseMesh === hitObj);
+        if (!beaconHit || !hits[0].face) return;
+        if (Math.sqrt((playerBody.position.x-beaconHit.bx+halfX-0.5)**2+(playerBody.position.y-beaconHit.by-0.5)**2+(playerBody.position.z-beaconHit.bz+halfZ-0.5)**2) > 5) return;
+        const fn = hits[0].face.normal;
+        const nx = Math.round(fn.x), ny = Math.round(fn.y), nz = Math.round(fn.z);
+        bx = beaconHit.bx + nx;
+        by = beaconHit.by + ny;
+        bz = beaconHit.bz + nz;
+      }
       if (by < 0 || by >= gridY) return;
       const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
       if ((px-0.4) < (bx-halfX+1) && (px+0.4) > (bx-halfX) && (py-0.45) < (by+1) && (py+0.45) > by && (pz-0.05) < (bz-halfZ+1) && (pz+0.05) > (bz-halfZ)) return;
@@ -1023,7 +1072,6 @@
       const pChunk = ensureChunkSync(cxc, czc, cyc);
       const pId = chunkLocalIdx(pChunk, bx, bz, by);
       if (pChunk.states[pId] !== 0) return;
-      for (const b of beacons) { if (b.bx === bx && b.by === by && b.bz === bz) return; }
       if (isWater) {
         removeItems('water_block', 1);
         pChunk.states[pId] = 2;
@@ -2306,6 +2354,26 @@
                 breakProgress = 0;
                 breakDuration = 7;
                 breakMesh = chunk.reinfMesh;
+              } else if (chunk.states[hid] === 5 && distToBlock(chunk, hid) <= 5) {
+                breakChunk = chunk;
+                breakId = hid;
+                breakProgress = 0;
+                breakDuration = 10;
+                breakMesh = null;
+              }
+            } else {
+              const beaconHit = beacons.find(b => b.baseMesh === hitObj);
+              if (beaconHit) {
+                const cxc = Math.floor(beaconHit.bx / CHUNK), czc = Math.floor(beaconHit.bz / CHUNK), cyc = Math.floor(beaconHit.by / CHUNK);
+                const hitChunk = ensureChunkSync(cxc, czc, cyc);
+                const hid = chunkLocalIdx(hitChunk, beaconHit.bx, beaconHit.bz, beaconHit.by);
+                if (hitChunk.states[hid] === 5 && Math.sqrt((playerBody.position.x-beaconHit.bx+halfX-0.5)**2+(playerBody.position.y-beaconHit.by-0.5)**2+(playerBody.position.z-beaconHit.bz+halfZ-0.5)**2) <= 5) {
+                  breakChunk = hitChunk;
+                  breakId = hid;
+                  breakProgress = 0;
+                  breakDuration = 10;
+                  breakMesh = null;
+                }
               }
             }
           }
@@ -2377,6 +2445,7 @@
             if (c.reinfMesh) visibleMeshes.push(c.reinfMesh);
           }
         }
+        for (const b of beacons) { visibleMeshes.push(b.baseMesh); }
       }
 
       dir.target.position.copy(playerBody.position);

@@ -569,6 +569,17 @@
       scene.add(m);
       glueDropPool.push(m);
     }
+    const plasticTex = new THREE.TextureLoader().load('./Plastic Piece.png');
+    const plasticMat = new THREE.MeshStandardMaterial({ map: plasticTex, transparent: true });
+    const plasticGeo = new THREE.BoxGeometry(0.25, 0.08, 0.25);
+    const PLASTIC_POOL = 20;
+    const plasticDropPool = [];
+    for (let i = 0; i < PLASTIC_POOL; i++) {
+      const m = new THREE.Mesh(plasticGeo, plasticMat);
+      m.visible = false;
+      scene.add(m);
+      plasticDropPool.push(m);
+    }
     const cartScrapTex = new THREE.TextureLoader().load('./Cartolina Scrap.png');
     const cartScrapMat = new THREE.MeshStandardMaterial({ map: cartScrapTex, transparent: true });
     const cartScrapGeo = new THREE.BoxGeometry(0.25, 0.08, 0.25);
@@ -763,6 +774,8 @@
             const gm = freePoolMesh(glueDropPool);
             if (gm) { gm.position.set(g.x + (Math.random()-0.5)*0.6, g.y + 0.5, g.z + (Math.random()-0.5)*0.6); gm.visible = true; scrapItems.push({ mesh: gm, pos: gm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'glue' }); }
           }
+          const pm = freePoolMesh(plasticDropPool);
+          if (pm) { pm.position.set(g.x + (Math.random()-0.5)*0.4, g.y + 0.5, g.z + (Math.random()-0.5)*0.4); pm.visible = true; scrapItems.push({ mesh: pm, pos: pm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'plastic' }); }
           glueys.splice(glueys.indexOf(g), 1);
         }
         return true;
@@ -1799,6 +1812,8 @@
                     scrapItems.push({ mesh: gm, pos: gm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'glue' });
                   }
                 }
+                const pm = freePoolMesh(plasticDropPool);
+                if (pm) { pm.position.set(g.x + (Math.random()-0.5)*0.4, g.y + 0.5, g.z + (Math.random()-0.5)*0.4); pm.visible = true; scrapItems.push({ mesh: pm, pos: pm.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'plastic' }); }
                 glueys.splice(gi, 1);
               }
               hit = true;

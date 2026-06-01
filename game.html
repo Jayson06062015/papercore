@@ -1068,7 +1068,7 @@
 
       for (const c of cartolines) {
         if (!c.mesh || !c.mesh.visible) continue;
-        if (!checkMobHit(c.x, c.y, c.z, 0.8, 0.9, 0.05)) continue;
+        if (!checkMobHit(c.x, c.y, c.z, 0.5, 0.9, 0.5)) continue;
         c.hp -= dmg; c.flashTimer = 0.5; c.mesh.material.color.setHex(0xff0000);
         sel.durability[0]--;
         if (sel.durability[0] <= 0) { sel.count--; sel.durability.shift(); if (sel.count <= 0) { sel.type = null; sel.durability = []; } }
@@ -2716,23 +2716,15 @@
           if (c.flashTimer <= 0) { c.flashTimer = 0; if (c.mesh) c.mesh.material.color.setHex(0xffffff); }
         }
         c.moveTimer -= dt;
-        if (c.moveTimer <= 0) {
-          c.moveTimer = 1 + Math.random() * 2;
-          if (cdist2 < 25 * 25) {
-            c.dirX = cdx / Math.sqrt(cdist2);
-            c.dirZ = cdz / Math.sqrt(cdist2);
-          } else {
-            const a2 = Math.random() * Math.PI * 2;
-            c.dirX = Math.cos(a2);
-            c.dirZ = Math.sin(a2);
-          }
-        }
+        const cLen = Math.sqrt(cdx * cdx + cdz * cdz) || 1;
+        c.dirX = cdx / cLen;
+        c.dirZ = cdz / cLen;
         if (c.onGround && Math.random() < 1.5 * dt) {
           c.vy = 7;
           c.onGround = false;
         }
         c.vy -= 20 * dt;
-        const cHwX = 0.8, cHwZ = 0.05, cHh = 0.9, eps = 0.001;
+        const cHwX = 0.5, cHwZ = 0.5, cHh = 0.9, eps = 0.001;
         const cNextX = c.x + c.dirX * 2.5 * dt;
         const cEdgeX = cNextX + Math.sign(c.dirX) * cHwX;
         const cbx = Math.floor(cEdgeX + halfX + (c.dirX > 0 ? eps : (c.dirX < 0 ? -eps : 0)));

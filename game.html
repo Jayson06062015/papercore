@@ -1030,6 +1030,10 @@
           breakChunk.mesh.instanceColor.needsUpdate = true;
         }
       }
+      if (breakBeaconBase) {
+        breakBeaconBase.material.color.setHex(0xffffff);
+        breakBeaconBase = null;
+      }
       isBreaking = false;
       breakProgress = 0;
       breakChunk = null;
@@ -1198,6 +1202,10 @@
         currentDim = data.dim || 'paperia';
         playerBody.position.set(data.player.x, data.player.y, data.player.z);
         loadChunksAroundPlayer();
+        {
+          const gndY = getGroundY(playerBody.position.x, playerBody.position.z);
+          if (gndY > 0) playerBody.position.y = gndY + PH / 2;
+        }
         ensureAboveGround();
         playerHealth = data.player.health;
         yaw = data.player.yaw;
@@ -1214,6 +1222,7 @@
             const bm = beaconBaseMeshes[i];
             if (bm.visible) continue;
             bm.position.set(px, wy, pz);
+            bm.material = beaconBaseMat.clone();
             bm.visible = true;
             const bbm = beaconBeamMeshes[i];
             bbm.position.set(px, wy + 0.5 + 500, pz);
@@ -1310,6 +1319,7 @@
         if (bm.visible) continue;
         const wx = bx - halfX + 0.5, wy = by + 0.5, wz = bz - halfZ + 0.5;
         bm.position.set(wx, wy, wz);
+        bm.material = beaconBaseMat.clone();
         bm.visible = true;
         const bbm = beaconBeamMeshes[i];
         bbm.position.set(wx, wy + 0.5 + 500, wz);
@@ -1426,6 +1436,7 @@
           const bm = beaconBaseMeshes[i];
           if (bm.visible) continue;
           bm.position.set(playerBody.position.x, wy, bz);
+          bm.material = beaconBaseMat.clone();
           bm.visible = true;
           const bbm = beaconBeamMeshes[i];
           bbm.position.set(playerBody.position.x, wy + 0.5 + 500, bz);
@@ -1538,6 +1549,7 @@
     let breakNeedsTarget = false;
     let breakDuration = 1;
     let breakMesh = null;
+    let breakBeaconBase = null;
     let breakingPortalBeacon = false;
     let attachHealTimer = -1;
     let velX = 0, velZ = 0;
@@ -2913,6 +2925,9 @@
                 breakProgress = 0;
                 breakDuration = 10;
                 breakMesh = null;
+                const bp = idxToWorldPos(chunk, hid);
+                const found = beacons.find(b => b.bx === Math.round(bp.x + halfX - 0.5) && b.by === Math.round(bp.y - 0.5) && b.bz === Math.round(bp.z + halfZ - 0.5));
+                breakBeaconBase = found ? found.baseMesh : null;
               } else if (chunk.states[hid] === 6 && distToBlock(chunk, hid) <= 5) {
                 breakChunk = chunk;
                 breakId = hid;
@@ -2944,6 +2959,7 @@
                   breakProgress = 0;
                   breakDuration = 10;
                   breakMesh = null;
+                  breakBeaconBase = beaconHit.baseMesh;
                 }
               } else if (portalBeacon && portalBeacon.baseMesh === hitObj) {
                 breakingPortalBeacon = true;
@@ -2963,13 +2979,18 @@
             breakProgress += dt;
             const t = Math.min(breakProgress / breakDuration, 1);
             const color = new THREE.Color().lerpColors(white, black, t);
-            const targetMesh = breakMesh || breakChunk.mesh;
-            targetMesh.setColorAt(breakId, color);
-            targetMesh.instanceColor.needsUpdate = true;
+            if (breakBeaconBase) {
+              breakBeaconBase.material.color.copy(color);
+            } else {
+              const targetMesh = breakMesh || breakChunk.mesh;
+              targetMesh.setColorAt(breakId, color);
+              targetMesh.instanceColor.needsUpdate = true;
+            }
             if (breakProgress >= breakDuration) {
               breakBlock(breakChunk, breakId);
               breakChunk = null; breakId = -1; breakProgress = 0;
               breakMesh = null;
+              breakBeaconBase = null;
               breakNeedsTarget = true;
             }
           }

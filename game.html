@@ -1658,6 +1658,7 @@
 
     const keys = {};
     document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT') return;
       keys[e.code] = true;
       keys[e.key] = true;
       if (e.code === 'Space' || e.key === ' ') { e.preventDefault(); }

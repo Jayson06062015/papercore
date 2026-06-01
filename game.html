@@ -324,7 +324,7 @@
     function terrainHeightVinu(x, z) {
       let n = 0;
       for (const o of terrainOctaves) {
-        n += Math.sin(x * o.f * 0.7 + z * o.g * 0.7 + o.p * 1.5) * o.a * 3;
+        n += Math.sin(x * o.f * 3 + z * o.g * 3 + o.p * 3) * o.a * 8;
       }
       return Math.max(1, Math.min(gridY - 5, Math.round(35 + n)));
     }
@@ -597,6 +597,13 @@
     );
     const startBY = terrainHeight(Math.floor(gridX / 2), Math.floor(gridZ / 2));
     playerBody.position.set(0, startBY + PH / 2 + 1, 0);
+    function ensureAboveGround() {
+      for (let iter = 0; iter < 20; iter++) {
+        if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
+        playerBody.position.y += 1;
+      }
+    }
+    ensureAboveGround();
     playerBody.castShadow = true;
     playerBody.visible = false;
     scene.add(playerBody);
@@ -666,6 +673,9 @@
         }
       }
     }
+    ensureAboveGround();
+    const centerH = terrainHeight(Math.floor(playerBody.position.x + halfX), Math.floor(playerBody.position.z + halfZ));
+    if (playerBody.position.y - PH / 2 < centerH) playerBody.position.y = centerH + PH / 2 + 1;
 
     const raycaster = new THREE.Raycaster();
     const scrapTex = new THREE.TextureLoader().load('./Paper Scrap.png');
@@ -1106,12 +1116,34 @@
           chunkBuildQueue.push(chunk.key);
         }
         playerBody.position.set(data.player.x, data.player.y, data.player.z);
+        ensureAboveGround();
         playerHealth = data.player.health;
         yaw = data.player.yaw;
         pitch = data.player.pitch;
         inventory = data.player.inventory.map(s => ({ type: s.type, count: s.count, durability: [...(s.durability||[])] }));
         selectedSlot = data.player.selectedSlot;
         currentDim = data.dim || 'paperia';
+        if (currentDim === 'vinu') {
+          scene.background = new THREE.Color(0x440000);
+          scene.fog.color.setHex(0x440000);
+          const px = data.player.x, pz = data.player.z;
+          const wx = px, wz = pz + 3;
+          const wy = terrainHeightVinu(Math.floor(wx), Math.floor(wz)) + 1;
+          for (let i = 0; i < BEACON_POOL; i++) {
+            const bm = beaconBaseMeshes[i];
+            if (bm.visible) continue;
+            bm.position.set(wx, wy, wz);
+            bm.visible = true;
+            const bbm = beaconBeamMeshes[i];
+            bbm.position.set(wx, wy + 0.5 + 500, wz);
+            bbm.visible = true;
+            portalBeacon = { x: wx, y: wy, z: wz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 };
+            break;
+          }
+        } else {
+          scene.background = skyTex;
+          scene.fog.color.setHex(0xdceeff);
+        }
         crateInventories.clear();
         if (data.crates) {
           for (const [key, arr] of data.crates) {
@@ -1375,6 +1407,7 @@
       playerHealth = maxHealth;
       updateHealthDisplay();
       playerBody.position.copy(startPos);
+      ensureAboveGround();
       velocity.set(0, 0, 0);
       onGround = true;
       yaw = 0; pitch = 0;

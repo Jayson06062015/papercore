@@ -2585,7 +2585,7 @@
           freeMesh.material.color.setHex(0xffffff);
           freeMesh.position.set(sx, sy + 0.75, sz);
           freeMesh.visible = true;
-          glueys.push({ x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh: freeMesh, hp: 5, panicTimer: 0, flashTimer: 0 });
+          glueys.push({ x: sx, y: sy + 0.75, z: sz, vy: 0, onGround: true, moveTimer: Math.random() * 2, dirX: Math.cos(a), dirZ: Math.sin(a), mesh: freeMesh, hp: 5, panicTimer: 0, flashTimer: 0, scatter: 0 });
         }
       }
       for (let gi = 0; gi < glueys.length; gi++) {
@@ -2606,6 +2606,7 @@
         g.moveTimer -= dt * speedMul;
         if (g.moveTimer <= 0) {
           g.moveTimer = 1 + Math.random() * 2;
+          g.scatter = (Math.random() - 0.5) * Math.PI * 0.5;
           const a2 = Math.random() * Math.PI * 2;
           g.dirX = Math.cos(a2);
           g.dirZ = Math.sin(a2);
@@ -2614,8 +2615,7 @@
         if (held && held.type === 'glue' && held.count > 0) {
           const dx = playerBody.position.x - g.x, dz = playerBody.position.z - g.z;
           const d = Math.sqrt(dx * dx + dz * dz) || 1;
-          const scatter = (Math.random() - 0.5) * Math.PI * 0.5;
-          const angle = Math.atan2(dz, dx) + scatter;
+          const angle = Math.atan2(dz, dx) + g.scatter;
           g.dirX = Math.cos(angle);
           g.dirZ = Math.sin(angle);
         }

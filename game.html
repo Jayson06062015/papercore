@@ -319,14 +319,14 @@
       for (const o of terrainOctaves) {
         n += Math.sin(x * o.f + z * o.g + o.p) * o.a;
       }
-      return Math.max(1, Math.round(28 + n));
+      return Math.max(1, Math.min(gridY - 5, Math.round(28 + n)));
     }
     function terrainHeightVinu(x, z) {
       let n = 0;
       for (const o of terrainOctaves) {
         n += Math.sin(x * o.f * 0.7 + z * o.g * 0.7 + o.p * 1.5) * o.a * 3;
       }
-      return Math.max(1, Math.round(35 + n));
+      return Math.max(1, Math.min(gridY - 5, Math.round(35 + n)));
     }
 
     const blockTex = new THREE.TextureLoader().load('./Paper Block.png');

@@ -75,6 +75,7 @@
     #pause-overlay .pause-window { background:linear-gradient(135deg,#f5f3ff,#e0e7ff); border:3px solid #8b5cf6; border-radius:16px; padding:30px; text-align:center; box-shadow:0 0 40px rgba(139,92,246,0.3); }
     #pause-overlay h2 { margin:0 0 20px; font-size:28px; color:#4c1d95; font-weight:900; }
     #pause-overlay button { display:block; width:200px; margin:10px auto; padding:12px 20px; font-size:16px; font-weight:700; border:2px solid #6d28d9; border-radius:8px; background:#8b5cf6; color:#fff; cursor:pointer; font-family:"Poppins",sans-serif; }
+    #cheatInput:focus { border-color:#8b5cf6 !important; box-shadow:0 0 0 3px rgba(139,92,246,0.2); }
     #pause-overlay button:hover { background:#7c3aed; }
     .toggle { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0; cursor:pointer; }
     .toggle input { opacity:0; width:0; height:0; }
@@ -87,6 +88,7 @@
       #pause-overlay .pause-window { padding:20px; }
       #pause-overlay h2 { font-size:22px; margin:0 0 14px; }
       .setting { font-size:14px; gap:8px; margin-top:12px; }
+      #cheatInput { width:140px !important; font-size:13px !important; }
     }
     #death-overlay { position:fixed; inset:0; z-index:50; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; }
     #death-overlay .death-window { background:linear-gradient(135deg,#1e1b4b,#0f0d2e); border:3px solid #991b1b; border-radius:16px; padding:40px; text-align:center; box-shadow:0 0 60px rgba(153,27,27,0.4); }
@@ -186,6 +188,10 @@
       <div class="setting">
         <label>Autosave:</label>
         <label class="toggle"><input type="checkbox" id="autoSaveToggle" checked><span class="slider"></span></label>
+      </div>
+      <div class="setting" style="margin-top:16px;flex-direction:column;gap:6px;">
+        <label style="font-size:14px;color:#6d28d9;font-weight:700;">CHEAT CODE</label>
+        <input type="text" id="cheatInput" placeholder="Enter cheat code..." style="width:180px;padding:8px 12px;border:2px solid #c4b5fd;border-radius:8px;font-family:'Poppins',sans-serif;font-size:14px;text-align:center;outline:none;background:#fff;">
       </div>
       <button id="btn-resume">RESUME</button>
       <button id="btn-save">SAVE GAME</button>
@@ -1790,6 +1796,19 @@
     document.getElementById('btn-save').addEventListener('touchstart', (e) => { e.preventDefault(); saveGame(); }, { passive: false });
     document.getElementById('autoSaveToggle').addEventListener('change', (e) => { autoSaveEnabled = e.target.checked; });
     document.getElementById('autoSaveToggle').addEventListener('touchstart', (e) => { e.stopPropagation(); }, { passive: false });
+    document.getElementById('cheatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        const val = e.target.value.trim();
+        if (val === 'BE3EE3C0UN123') {
+          addToInventory('beacon');
+          e.target.value = '';
+          e.target.placeholder = 'Beacon received!';
+        } else {
+          e.target.value = '';
+          e.target.placeholder = 'Invalid code';
+        }
+      }
+    });
     document.getElementById('btn-resume').addEventListener('touchstart', (e) => {
       e.preventDefault();
       isPaused = false;

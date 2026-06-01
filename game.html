@@ -1840,7 +1840,7 @@
 
     function addToInventory(type) {
       for (let i = 0; i < inventory.length; i++) {
-        if (inventory[i].type === type && inventory[i].count > 0 && type !== 'shield' && type !== 'reinforced_shield' && type !== 'cardboard_club' && type !== 'wood_club') {
+        if (inventory[i].type === type && inventory[i].count > 0 && type !== 'shield' && type !== 'reinforced_shield' && type !== 'cardboard_club' && type !== 'wood_club' && type !== 'paper_crate') {
           inventory[i].count++;
           if (type === 'shield') inventory[i].durability.push(50);
           if (type === 'reinforced_shield') inventory[i].durability.push(250);
@@ -1898,7 +1898,7 @@
     function moveItemsFromPlayerToCrate(pi, qty) {
       const slot = inventory[pi];
       if (!slot.type || slot.count <= 0) return false;
-      const nonStackable = slot.type === 'shield' || slot.type === 'reinforced_shield' || slot.type === 'cardboard_club' || slot.type === 'wood_club';
+      const nonStackable = slot.type === 'shield' || slot.type === 'reinforced_shield' || slot.type === 'cardboard_club' || slot.type === 'wood_club' || slot.type === 'paper_crate';
       if (nonStackable) qty = 1;
       qty = Math.min(qty, slot.count);
       if (qty <= 0) return false;
@@ -1978,7 +1978,7 @@
           const slot = inv[ci];
           if (!slot.type) return;
           for (let pi = 0; pi < inventory.length; pi++) {
-            if (!inventory[pi].type || (inventory[pi].type === slot.type && inventory[pi].count > 0 && slot.type !== 'shield' && slot.type !== 'reinforced_shield' && slot.type !== 'cardboard_club' && slot.type !== 'wood_club')) {
+            if (!inventory[pi].type || (inventory[pi].type === slot.type && inventory[pi].count > 0 && slot.type !== 'shield' && slot.type !== 'reinforced_shield' && slot.type !== 'cardboard_club' && slot.type !== 'wood_club' && slot.type !== 'paper_crate')) {
               if (!inventory[pi].type) {
                 inventory[pi].type = slot.type;
                 inventory[pi].count = slot.count;

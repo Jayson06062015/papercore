@@ -271,6 +271,17 @@
     const skyTex = new THREE.CanvasTexture(canvas);
 
     const isMobile = 'ontouchstart' in window;
+    const isLoadMode = new URLSearchParams(location.search).get('mode') === 'load';
+    if (isLoadMode) {
+      try {
+        const raw = localStorage.getItem('papercore_save_v1');
+        if (raw) {
+          const sd = JSON.parse(raw);
+          if (sd.worldSize) document.getElementById('wsInput').value = sd.worldSize.join('-');
+        }
+      } catch(e) {}
+      document.getElementById('wsInput').parentElement.style.display = 'none';
+    }
     const wsParts = (document.getElementById('wsInput').value || '200-100-200').split('-').map(Number);
     const gridX = Math.max(20, wsParts[0] || 200);
     const gridZ = Math.max(20, wsParts[2] || wsParts[0] || 200);
@@ -1110,6 +1121,7 @@
           inventory: inventory.map(s => ({ type: s.type, count: s.count, durability: [...s.durability] })),
           selectedSlot
         },
+        worldSize: [gridX, gridY, gridZ],
         dim: currentDim,
         chunks: [],
         glueys: glueys.map(g => ({ x: g.x, y: g.y, z: g.z, vy: g.vy, onGround: g.onGround, moveTimer: g.moveTimer, dirX: g.dirX, dirZ: g.dirZ, hp: g.hp, panicTimer: g.panicTimer })),

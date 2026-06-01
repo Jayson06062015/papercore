@@ -103,6 +103,25 @@
     #crate-ui .grid .cs img { max-width:80%; max-height:80%; pointer-events:none; }
     #crate-ui .grid .cs .cc { position:absolute; bottom:1px; right:3px; font-size:11px; font-weight:700; color:#333; pointer-events:none; }
     #crate-ui .close-crate { display:block; margin:8px auto 0; padding:8px 20px; font-size:14px; font-weight:700; border:2px solid #d35400; border-radius:8px; background:white; cursor:pointer; }
+    @media (max-width:600px) {
+      #crate-ui .window { padding:12px; }
+      #crate-ui h2 { font-size:16px; margin:0 0 10px; }
+      #crate-ui .grid { gap:3px; }
+      #crate-ui .grid .cs { width:36px; height:36px; border-width:1.5px; border-radius:4px; }
+      #crate-ui .grid .cs img { max-width:70%; max-height:70%; }
+      #crate-ui .grid .cs .cc { font-size:9px; }
+      #crate-ui .section { margin-bottom:10px; }
+      #crate-ui .section h3 { font-size:12px; margin:0 0 4px; }
+      #crate-ui .close-crate { padding:6px 14px; font-size:12px; }
+    }
+    #move-dialog { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; }
+    #move-dialog .md-window { background:linear-gradient(135deg,#fef9e7,#fae5d3); border:3px solid #d35400; border-radius:12px; padding:20px; max-width:260px; width:80%; text-align:center; box-shadow:0 0 30px rgba(211,84,0,0.3); }
+    #move-dialog .md-window p { margin:0 0 12px; font-size:15px; color:#333; font-weight:600; }
+    #move-dialog .md-window input { width:70px; padding:6px; font-size:16px; text-align:center; border:2px solid #d35400; border-radius:6px; outline:none; }
+    #move-dialog .md-window .md-error { color:#dc2626; font-size:12px; font-weight:600; margin:6px 0 0; min-height:16px; }
+    #move-dialog .md-window .md-buttons { margin-top:12px; display:flex; gap:8px; justify-content:center; }
+    #move-dialog .md-window .md-buttons button { padding:6px 16px; font-size:13px; font-weight:700; border:2px solid #d35400; border-radius:6px; cursor:pointer; background:white; font-family:"Poppins",sans-serif; }
+    #move-dialog .md-window .md-buttons button:first-child { background:#d35400; color:white; }
   </style>
 </head>
 <body>
@@ -190,6 +209,18 @@
       <div class="section"><h3>Crate Inventory</h3><div class="grid" id="crate-grid"></div></div>
       <div class="section"><h3>Your Inventory</h3><div class="grid" id="crate-player-grid"></div></div>
       <button class="close-crate" id="close-crate">Close</button>
+    </div>
+  </div>
+
+  <div id="move-dialog">
+    <div class="md-window">
+      <p>How much you want to move?</p>
+      <input type="number" id="move-qty" min="1" value="1">
+      <p class="md-error" id="move-error"></p>
+      <div class="md-buttons">
+        <button id="move-confirm">Move</button>
+        <button id="move-cancel">Cancel</button>
+      </div>
     </div>
   </div>
 
@@ -1864,6 +1895,64 @@
       return crateInventories.get(key);
     }
     let openCratePos = null;
+    function moveItemsFromPlayerToCrate(pi, qty) {
+      const slot = inventory[pi];
+      if (!slot.type || slot.count <= 0) return false;
+      const nonStackable = slot.type === 'shield' || slot.type === 'reinforced_shield' || slot.type === 'cardboard_club' || slot.type === 'wood_club';
+      if (nonStackable) qty = 1;
+      qty = Math.min(qty, slot.count);
+      if (qty <= 0) return false;
+      const inv2 = getCrateInv(openCratePos.bx, openCratePos.by, openCratePos.bz);
+      let remaining = qty;
+      for (let ci = 0; ci < inv2.length && remaining > 0; ci++) {
+        if (!inv2[ci].type) {
+          inv2[ci].type = slot.type;
+          inv2[ci].count = remaining;
+          inv2[ci].durability = [...(slot.durability||[])];
+          remaining = 0;
+        } else if (inv2[ci].type === slot.type && !nonStackable) {
+          inv2[ci].count += remaining;
+          remaining = 0;
+        }
+      }
+      if (remaining === qty) return false;
+      slot.count -= qty - remaining;
+      if (slot.count <= 0) { slot.type = null; slot.durability = []; }
+      updateSlot(pi);
+      renderCrateUI();
+      return true;
+    }
+    function openMoveDialog(pi) {
+      const slot = inventory[pi];
+      if (!slot.type || slot.count <= 0) return;
+      const inp = document.getElementById('move-qty');
+      const err = document.getElementById('move-error');
+      inp.value = slot.count;
+      inp.max = slot.count;
+      err.textContent = '';
+      document.getElementById('move-dialog').style.display = 'flex';
+      inp.focus();
+      inp.select();
+      inp.onkeydown = (e) => {
+        if (e.key === 'Enter') document.getElementById('move-confirm').click();
+      };
+      document.getElementById('move-confirm').onclick = () => {
+        const v = parseInt(inp.value);
+        if (isNaN(v) || v < 1 || v > slot.count) {
+          err.textContent = 'Invalid';
+          return;
+        }
+        if (moveItemsFromPlayerToCrate(pi, v)) {
+          document.getElementById('move-dialog').style.display = 'none';
+        }
+      };
+      document.getElementById('move-cancel').onclick = () => {
+        document.getElementById('move-dialog').style.display = 'none';
+      };
+      document.getElementById('move-dialog').onclick = (e) => {
+        if (e.target === e.currentTarget) document.getElementById('move-dialog').style.display = 'none';
+      };
+    }
     function renderCrateUI() {
       if (!openCratePos) return;
       const inv = getCrateInv(openCratePos.bx, openCratePos.by, openCratePos.bz);
@@ -1926,26 +2015,7 @@
           const pi = parseInt(s.dataset.pi);
           const slot = inventory[pi];
           if (!slot.type || slot.count <= 0) return;
-          const inv2 = getCrateInv(openCratePos.bx, openCratePos.by, openCratePos.bz);
-          for (let ci = 0; ci < inv2.length; ci++) {
-            if (!inv2[ci].type) {
-              inv2[ci].type = slot.type;
-              inv2[ci].count = 1;
-              inv2[ci].durability = [...(slot.durability||[])];
-              slot.count--;
-              if (slot.count <= 0) { slot.type = null; slot.durability = []; }
-              updateSlot(pi);
-              renderCrateUI();
-              return;
-            } else if (inv2[ci].type === slot.type && slot.type !== 'shield' && slot.type !== 'reinforced_shield' && slot.type !== 'cardboard_club' && slot.type !== 'wood_club') {
-              inv2[ci].count++;
-              slot.count--;
-              if (slot.count <= 0) { slot.type = null; slot.durability = []; }
-              updateSlot(pi);
-              renderCrateUI();
-              return;
-            }
-          }
+          openMoveDialog(pi);
         });
         playerGrid.appendChild(s);
       }
@@ -1959,6 +2029,7 @@
     function closeCrate() {
       openCratePos = null;
       document.getElementById('crate-ui').style.display = 'none';
+      document.getElementById('move-dialog').style.display = 'none';
     }
     document.getElementById('close-crate').addEventListener('click', closeCrate);
     document.getElementById('crate-ui').addEventListener('click', (e) => {

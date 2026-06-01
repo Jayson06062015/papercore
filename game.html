@@ -663,7 +663,7 @@
     const startBY = terrainHeight(Math.floor(gridX / 2), Math.floor(gridZ / 2));
     playerBody.position.set(0, startBY + PH / 2 + 1, 0);
     function ensureAboveGround() {
-      for (let iter = 0; iter < 20; iter++) {
+      for (let iter = 0; iter < gridY * 2; iter++) {
         if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
         playerBody.position.y += 1;
       }
@@ -3003,17 +3003,23 @@
         b.angle += dt * 0.8;
         b.beamMesh.rotation.y = b.angle;
       }
-      if (currentDim === 'paperia') {
+      {
         const pp = playerBody.position;
-        for (const b of beacons) {
-          if (Math.abs(pp.x - b.x) < 0.5 && Math.abs(pp.z - b.z) < 0.5 && pp.y > b.y + 0.5 - 0.45 && pp.y < b.y + 1000.5 + 0.45) {
-            switchDimension(); break;
+        if (currentDim === 'paperia') {
+          for (const b of beacons) {
+            if (Math.abs(pp.x - b.x) < 0.5 && Math.abs(pp.z - b.z) < 0.5 && pp.y >= b.y && pp.y < b.y + 1000) {
+              switchDimension(); break;
+            }
           }
-        }
-      } else if (currentDim === 'vinu' && portalBeacon) {
-        const pp = playerBody.position;
-        if (Math.abs(pp.x - portalBeacon.x) < 0.5 && Math.abs(pp.z - portalBeacon.z) < 0.5 && pp.y > portalBeacon.y + 0.5 - 0.45 && pp.y < portalBeacon.y + 1000.5 + 0.45) {
-          switchDimension();
+        } else if (currentDim === 'vinu') {
+          if (portalBeacon && Math.abs(pp.x - portalBeacon.x) < 0.5 && Math.abs(pp.z - portalBeacon.z) < 0.5 && pp.y >= portalBeacon.y && pp.y < portalBeacon.y + 1000) {
+            switchDimension();
+          }
+          for (const b of beacons) {
+            if (Math.abs(pp.x - b.x) < 0.5 && Math.abs(pp.z - b.z) < 0.5 && pp.y >= b.y && pp.y < b.y + 1000) {
+              switchDimension(); break;
+            }
+          }
         }
       }
 

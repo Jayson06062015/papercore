@@ -632,8 +632,6 @@
       for (let iter = 0; iter < 20; iter++) {
         if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
         playerBody.position.y += 1;
-        playerBody.position.x += (Math.random() - 0.5) * 2;
-        playerBody.position.z += (Math.random() - 0.5) * 2;
       }
     }
     function loadChunksAroundPlayer() {
@@ -2237,22 +2235,16 @@
 
       if (playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) {
         const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
-        for (let dy = 0.5; dy <= 3; dy += 0.5) {
-          if (!playerCollidesAt(px, py + dy, pz, true)) { playerBody.position.y += dy; break; }
-        }
-        if (playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) {
-          const qx = playerBody.position.x, qy = playerBody.position.y, qz = playerBody.position.z;
-          for (const [dx, dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-            for (let d = 0.1; d <= 1.5; d += 0.1) {
-              const tx = qx + dx * d, tz = qz + dz * d;
-              if (!playerCollidesAt(tx, qy, tz, true)) {
-                playerBody.position.x = tx;
-                playerBody.position.z = tz;
-                break;
-              }
+        for (const [dx, dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+          for (let d = 0.1; d <= 1.5; d += 0.1) {
+            const tx = px + dx * d, tz = pz + dz * d;
+            if (!playerCollidesAt(tx, py, tz, true)) {
+              playerBody.position.x = tx;
+              playerBody.position.z = tz;
+              break;
             }
-            if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
           }
+          if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
         }
       }
 

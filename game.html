@@ -2708,9 +2708,14 @@
           if (c.flashTimer <= 0) { c.flashTimer = 0; if (c.mesh) c.mesh.material.color.setHex(0xffffff); }
         }
         c.moveTimer -= dt;
-        const cLen = Math.sqrt(cdx * cdx + cdz * cdz) || 1;
-        c.dirX = cdx / cLen;
-        c.dirZ = cdz / cLen;
+        if (c.moveTimer <= 0) {
+          c.moveTimer = 1 + Math.random() * 2;
+          const angleToPlayer = Math.atan2(cdz, cdx);
+          const scatter = (Math.random() - 0.5) * Math.PI * 0.5;
+          const finalAngle = angleToPlayer + scatter;
+          c.dirX = Math.cos(finalAngle);
+          c.dirZ = Math.sin(finalAngle);
+        }
         if (c.onGround && Math.random() < 1.5 * dt) {
           c.vy = 7;
           c.onGround = false;

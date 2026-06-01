@@ -2614,8 +2614,10 @@
         if (held && held.type === 'glue' && held.count > 0) {
           const dx = playerBody.position.x - g.x, dz = playerBody.position.z - g.z;
           const d = Math.sqrt(dx * dx + dz * dz) || 1;
-          g.dirX = dx / d;
-          g.dirZ = dz / d;
+          const scatter = (Math.random() - 0.5) * Math.PI * 0.5;
+          const angle = Math.atan2(dz, dx) + scatter;
+          g.dirX = Math.cos(angle);
+          g.dirZ = Math.sin(angle);
         }
         if (g.onGround && Math.random() < jumpChance * dt) {
           g.vy = 7;

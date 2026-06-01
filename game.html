@@ -601,6 +601,21 @@
       for (let iter = 0; iter < 20; iter++) {
         if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
         playerBody.position.y += 1;
+        playerBody.position.x += (Math.random() - 0.5) * 2;
+        playerBody.position.z += (Math.random() - 0.5) * 2;
+      }
+    }
+    function loadChunksAroundPlayer() {
+      const pCX = Math.floor((playerBody.position.x + halfX) / CHUNK);
+      const pCZ = Math.floor((playerBody.position.z + halfZ) / CHUNK);
+      const pCY = Math.floor(playerBody.position.y / CHUNK);
+      const loadR = Math.ceil(renderDist / CHUNK) + 1;
+      for (let cx = pCX - loadR; cx <= pCX + loadR; cx++) {
+        for (let cz = pCZ - loadR; cz <= pCZ + loadR; cz++) {
+          for (let cy = Math.max(0, pCY - 1); cy <= Math.min(chY - 1, pCY + 1); cy++) {
+            if (cx >= 0 && cz >= 0 && cy >= 0 && cy < chY) ensureChunk(cx, cz, cy);
+          }
+        }
       }
     }
     ensureAboveGround();
@@ -1115,29 +1130,29 @@
           chunk.states = new Uint8Array(cd.states);
           chunkBuildQueue.push(chunk.key);
         }
+        currentDim = data.dim || 'paperia';
         playerBody.position.set(data.player.x, data.player.y, data.player.z);
+        loadChunksAroundPlayer();
         ensureAboveGround();
         playerHealth = data.player.health;
         yaw = data.player.yaw;
         pitch = data.player.pitch;
         inventory = data.player.inventory.map(s => ({ type: s.type, count: s.count, durability: [...(s.durability||[])] }));
         selectedSlot = data.player.selectedSlot;
-        currentDim = data.dim || 'paperia';
         if (currentDim === 'vinu') {
           scene.background = new THREE.Color(0x440000);
           scene.fog.color.setHex(0x440000);
-          const px = data.player.x, pz = data.player.z;
-          const wx = px, wz = pz + 3;
-          const wy = terrainHeightVinu(Math.floor(wx), Math.floor(wz)) + 1;
+          const px = data.player.x, pz = data.player.z + 4;
+          const wy = terrainHeightVinu(Math.floor(px), Math.floor(pz)) + 1;
           for (let i = 0; i < BEACON_POOL; i++) {
             const bm = beaconBaseMeshes[i];
             if (bm.visible) continue;
-            bm.position.set(wx, wy, wz);
+            bm.position.set(px, wy, pz);
             bm.visible = true;
             const bbm = beaconBeamMeshes[i];
-            bbm.position.set(wx, wy + 0.5 + 500, wz);
+            bbm.position.set(px, wy + 0.5 + 500, pz);
             bbm.visible = true;
-            portalBeacon = { x: wx, y: wy, z: wz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 };
+            portalBeacon = { x: px, y: wy, z: pz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 };
             break;
           }
         } else {
@@ -1329,17 +1344,21 @@
         playerBody.position.x += DIM_OFFSET;
         playerBody.position.z = 0;
         playerBody.position.y = terrainHeightVinu(Math.floor(playerBody.position.x), Math.floor(playerBody.position.z)) + 3;
-        const wx = playerBody.position.x, wz = playerBody.position.z + 3;
-        const wy = terrainHeightVinu(Math.floor(wx), Math.floor(wz)) + 1;
+        velocity.set(0, 0, 0);
+        onGround = true;
+        loadChunksAroundPlayer();
+        ensureAboveGround();
+        const bz = playerBody.position.z + 4;
+        const wy = terrainHeightVinu(Math.floor(playerBody.position.x), Math.floor(bz)) + 1;
         for (let i = 0; i < BEACON_POOL; i++) {
           const bm = beaconBaseMeshes[i];
           if (bm.visible) continue;
-          bm.position.set(wx, wy, wz);
+          bm.position.set(playerBody.position.x, wy, bz);
           bm.visible = true;
           const bbm = beaconBeamMeshes[i];
-          bbm.position.set(wx, wy + 0.5 + 500, wz);
+          bbm.position.set(playerBody.position.x, wy + 0.5 + 500, bz);
           bbm.visible = true;
-          portalBeacon = { x: wx, y: wy, z: wz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 };
+          portalBeacon = { x: playerBody.position.x, y: wy, z: bz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 };
           break;
         }
       } else {
@@ -1356,6 +1375,10 @@
         scene.fog.color.setHex(0xdceeff);
         playerBody.position.x -= DIM_OFFSET;
         playerBody.position.y = terrainHeight(Math.floor(playerBody.position.x), Math.floor(playerBody.position.z)) + 3;
+        velocity.set(0, 0, 0);
+        onGround = true;
+        loadChunksAroundPlayer();
+        ensureAboveGround();
       }
     }
     renderer.domElement.addEventListener('mousedown', (e) => {
@@ -1406,7 +1429,15 @@
       isDead = false;
       playerHealth = maxHealth;
       updateHealthDisplay();
+      currentDim = 'paperia';
+      scene.background = skyTex;
+      scene.fog.color.setHex(0xdceeff);
+      if (portalBeacon) { portalBeacon.baseMesh.visible = false; portalBeacon.beamMesh.visible = false; portalBeacon = null; }
+      loadedChunks.clear();
+      chunkBuildQueue.length = 0;
+      visibleMeshes.length = 0;
       playerBody.position.copy(startPos);
+      loadChunksAroundPlayer();
       ensureAboveGround();
       velocity.set(0, 0, 0);
       onGround = true;
@@ -2135,16 +2166,22 @@
 
       if (playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) {
         const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
-        for (const [dx, dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
-          for (let d = 0.1; d <= 1.5; d += 0.1) {
-            const tx = px + dx * d, tz = pz + dz * d;
-            if (!playerCollidesAt(tx, py, tz, true)) {
-              playerBody.position.x = tx;
-              playerBody.position.z = tz;
-              break;
+        for (let dy = 0.5; dy <= 3; dy += 0.5) {
+          if (!playerCollidesAt(px, py + dy, pz, true)) { playerBody.position.y += dy; break; }
+        }
+        if (playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) {
+          const qx = playerBody.position.x, qy = playerBody.position.y, qz = playerBody.position.z;
+          for (const [dx, dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
+            for (let d = 0.1; d <= 1.5; d += 0.1) {
+              const tx = qx + dx * d, tz = qz + dz * d;
+              if (!playerCollidesAt(tx, qy, tz, true)) {
+                playerBody.position.x = tx;
+                playerBody.position.z = tz;
+                break;
+              }
             }
+            if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
           }
-          if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
         }
       }
 

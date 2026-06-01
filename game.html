@@ -1336,7 +1336,7 @@
       if (!hits.length) return;
       const hitObj = hits[0].object;
       let chunk = null;
-      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj) { chunk = c; break; } }
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj) { chunk = c; break; } }
       let bx, by, bz;
       if (chunk) {
         const hi = hits[0].instanceId;

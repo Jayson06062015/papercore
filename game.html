@@ -367,14 +367,20 @@
       for (const o of terrainOctaves) {
         n += Math.sin(x * o.f + z * o.g + o.p) * o.a;
       }
-      return Math.max(1, Math.min(gridY - 5, Math.round(28 + n)));
+      const base = Math.round(gridY * 0.28);
+      const lo = Math.max(2, Math.round(gridY * 0.1));
+      const hi = Math.min(gridY - 2, Math.round(gridY * 0.55));
+      return Math.max(lo, Math.min(hi, Math.round(base + n * gridY * 0.004)));
     }
     function terrainHeightVinu(x, z) {
       let n = 0;
       for (const o of terrainOctaves) {
-        n += Math.sin(x * o.f * 3 + z * o.g * 3 + o.p * 3) * o.a * 8;
+        n += Math.sin(x * o.f * 2.5 + z * o.g * 2.5 + o.p * 2.5) * o.a;
       }
-      return Math.max(1, Math.min(gridY - 5, Math.round(35 + n)));
+      const base = Math.round(gridY * 0.35);
+      const lo = Math.max(2, Math.round(gridY * 0.1));
+      const hi = Math.min(gridY - 2, Math.round(gridY * 0.55));
+      return Math.max(lo, Math.min(hi, Math.round(base + n * gridY * 0.004)));
     }
 
     const blockTex = new THREE.TextureLoader().load('./Paper Block.png');
@@ -1520,6 +1526,14 @@
       scene.background = skyTex;
       scene.fog.color.setHex(0xdceeff);
       if (portalBeacon) { portalBeacon.baseMesh.visible = false; portalBeacon.beamMesh.visible = false; portalBeacon = null; }
+      for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
+      beacons.length = 0;
+      for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
+      for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
+      glueys.length = 0;
+      cartolines.length = 0;
+      projectiles.length = 0;
+      scrapItems.length = 0;
       loadedChunks.clear();
       chunkBuildQueue.length = 0;
       visibleMeshes.length = 0;
@@ -2309,16 +2323,26 @@
 
       if (playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) {
         const px = playerBody.position.x, py = playerBody.position.y, pz = playerBody.position.z;
+        let pushed = false;
         for (const [dx, dz] of [[-1,0],[1,0],[0,-1],[0,1]]) {
           for (let d = 0.1; d <= 1.5; d += 0.1) {
             const tx = px + dx * d, tz = pz + dz * d;
             if (!playerCollidesAt(tx, py, tz, true)) {
               playerBody.position.x = tx;
               playerBody.position.z = tz;
+              pushed = true;
               break;
             }
           }
-          if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
+          if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) { pushed = true; break; }
+        }
+        if (!pushed) {
+          for (let d = 0.1; d <= 2; d += 0.1) {
+            if (!playerCollidesAt(playerBody.position.x, py + d, playerBody.position.z, true)) {
+              playerBody.position.y = py + d;
+              break;
+            }
+          }
         }
       }
 

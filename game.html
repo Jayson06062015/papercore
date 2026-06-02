@@ -957,16 +957,20 @@
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'beacon' });
         }
       } else if (state === 6) {
-        const mesh = freePoolMesh(ashDropPool);
-        if (mesh) {
-          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+        const dropCount = 5 + Math.floor(Math.random() * 3);
+        for (let s = 0; s < dropCount; s++) {
+          const mesh = freePoolMesh(ashDropPool);
+          if (!mesh) break;
+          mesh.position.set(bp.x + (Math.random() - 0.5) * 0.6, bp.y + 0.5, bp.z + (Math.random() - 0.5) * 0.6);
           mesh.visible = true;
-          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'ash_block' });
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'ash' });
         }
       } else if (state === 7) {
-        const mesh = freePoolMesh(vinuDropPool);
-        if (mesh) {
-          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+        const dropCount = 5 + Math.floor(Math.random() * 3);
+        for (let s = 0; s < dropCount; s++) {
+          const mesh = freePoolMesh(vinuDropPool);
+          if (!mesh) break;
+          mesh.position.set(bp.x + (Math.random() - 0.5) * 0.6, bp.y + 0.5, bp.z + (Math.random() - 0.5) * 0.6);
           mesh.visible = true;
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'vinu_powder' });
         }
@@ -1354,7 +1358,7 @@
       const isWood = sel.type === 'wood_plank';
       const isReinf = sel.type === 'reinforced_block';
       const isAsh = sel.type === 'ash_block';
-      const isVinu = sel.type === 'vinu_powder';
+      const isVinu = sel.type === 'vinu_powder_block';
       const isCrate = sel.type === 'paper_crate';
       if (sel.type === 'beacon') { tryPlaceBeacon(); return; }
       if (!isPaper && !isWater && !isWood && !isReinf && !isAsh && !isVinu && !isCrate) return;
@@ -1403,7 +1407,7 @@
         for (const m of [pChunk.mesh, pChunk.woodMesh, pChunk.reinfMesh]) { if (m) { m.setMatrixAt(pId, tempMat); m.instanceMatrix.needsUpdate = true; } }
       } else {
         const state = isWood ? 3 : (isReinf ? 4 : (isAsh ? 6 : (isVinu ? 7 : (isCrate ? 8 : 1))));
-        const itemType = isWood ? 'wood_plank' : (isReinf ? 'reinforced_block' : (isAsh ? 'ash_block' : (isVinu ? 'vinu_powder' : (isCrate ? 'paper_crate' : 'paper_block'))));
+        const itemType = isWood ? 'wood_plank' : (isReinf ? 'reinforced_block' : (isAsh ? 'ash_block' : (isVinu ? 'vinu_powder_block' : (isCrate ? 'paper_crate' : 'paper_block'))));
         removeItems(itemType, 1);
         pChunk.states[pId] = state;
         const w = bx - halfX + 0.5, h = by + 0.5, d = bz - halfZ + 0.5;
@@ -1949,8 +1953,10 @@
       cardboard_club:'./Cardboard Club.png',
       wood_club:'./Wood Club.png',
       beacon:'./Beacon.png',
+      ash:'./Ash Block.png',
       ash_block:'./Ash Block.png',
       vinu_powder:'./Vinu Powder Block.png',
+      vinu_powder_block:'./Vinu Powder Block.png',
       paper_crate:'./Paper Crate.png'
     };
 
@@ -2213,6 +2219,8 @@
       { id: 'cardboard_club', name: 'Cardboard Club', result: 'cardboard_club', resultImg: './Cardboard Club.png', ingredients: [{ type: 'cardboard', count: 3, img: './Cardboard.png' }] },
       { id: 'wood_club', name: 'Wood Club', result: 'wood_club', resultImg: './Wood Club.png', ingredients: [{ type: 'wood_plank', count: 3, img: './Wood Plank.png' }] },
       { id: 'beacon', name: 'Beacon', result: 'beacon', resultImg: './Beacon.png', ingredients: [{ type: 'cartolina', count: 25, img: './Cartolina Scrap.png' }, { type: 'wood_plank', count: 1, img: './Wood Plank.png' }, { type: 'plastic', count: 5, img: './Plastic Scrap.png' }, { type: 'glue', count: 20, img: './Glue.png' }] },
+      { id: 'ash_block', name: 'Ash Block', result: 'ash_block', resultImg: './Ash Block.png', ingredients: [{ type: 'ash', count: 8, img: './Ash Block.png' }] },
+      { id: 'vinu_powder_block', name: 'Vinu Powder Block', result: 'vinu_powder_block', resultImg: './Vinu Powder Block.png', ingredients: [{ type: 'vinu_powder', count: 8, img: './Vinu Powder Block.png' }] },
       { id: 'paper_crate', name: 'Paper Crate', result: 'paper_crate', resultImg: './Paper Crate.png', ingredients: [{ type: 'paper', count: 12, img: './Paper.png' }] },
     ];
     let selectedRecipe = null;

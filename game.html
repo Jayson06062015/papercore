@@ -415,6 +415,8 @@
     const CHUNK = 10;
     const chX = Math.ceil(gridX / CHUNK), chZ = Math.ceil(gridZ / CHUNK), chY = Math.ceil(gridY / CHUNK);
     const loadedChunks = new Map();
+    const dimChunkCache = { paperia: null, vinu: null };
+    const dimBeaconCache = { paperia: null, vinu: null };
     const visibleMeshes = [];
     const chunkKey = (cx, cz, cy) => cx + ',' + cz + ',' + cy;
     function getChunk(cx, cz, cy) { return loadedChunks.get(chunkKey(cx, cz, cy)) || null; }
@@ -1221,7 +1223,7 @@
           scene.fog.color.setHex(0x440000);
           const px = data.player.x, pz = data.player.z + 4;
           const bx = Math.floor(px + halfX), bz = Math.floor(pz + halfZ);
-          const beaconBlockY = terrainHeightVinu(Math.floor(px), Math.floor(pz)) + 1;
+          const beaconBlockY = terrainHeightVinu(bx, bz) + 1;
           const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(beaconBlockY / CHUNK);
           const chunk = ensureChunkSync(cxc, czc, cyc);
           const localId = chunkLocalIdx(chunk, bx, bz, beaconBlockY);
@@ -1418,18 +1420,29 @@
     }
     function switchDimension() {
       resetBreak();
-      if (currentDim === 'paperia') {
-        loadedChunks.clear();
-        chunkBuildQueue.length = 0;
-        visibleMeshes.length = 0;
-        for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
-        for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
-        for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
-        glueys.length = 0;
-        cartolines.length = 0;
-        projectiles.length = 0;
-        beacons.length = 0;
-        scrapItems.length = 0;
+      const prevDim = currentDim;
+      dimChunkCache[prevDim] = new Map(loadedChunks);
+      dimBeaconCache[prevDim] = beacons.slice();
+      for (const c of loadedChunks.values()) {
+        if (c.mesh) scene.remove(c.mesh);
+        if (c.waterMesh) scene.remove(c.waterMesh);
+        if (c.woodMesh) scene.remove(c.woodMesh);
+        if (c.reinfMesh) scene.remove(c.reinfMesh);
+        if (c.ashMesh) scene.remove(c.ashMesh);
+        if (c.vinuMesh) scene.remove(c.vinuMesh);
+        if (c.crateMesh) scene.remove(c.crateMesh);
+      }
+      loadedChunks.clear();
+      chunkBuildQueue.length = 0;
+      visibleMeshes.length = 0;
+      for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
+      for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
+      glueys.length = 0;
+      cartolines.length = 0;
+      projectiles.length = 0;
+      beacons.length = 0;
+      scrapItems.length = 0;
+      if (prevDim === 'paperia') {
         currentDim = 'vinu';
         scene.background = new THREE.Color(0x440000);
         scene.fog.color.setHex(0x440000);
@@ -1438,7 +1451,23 @@
         playerBody.position.y = terrainHeightVinu(Math.floor(playerBody.position.x), Math.floor(playerBody.position.z)) + PH / 2 + 1;
         velocity.set(0, 0, 0);
         onGround = true;
-        loadChunksAroundPlayer();
+        if (dimChunkCache.vinu) {
+          for (const [key, c] of dimChunkCache.vinu) {
+            loadedChunks.set(key, c);
+            if (c.mesh) scene.add(c.mesh);
+            if (c.waterMesh) scene.add(c.waterMesh);
+            if (c.woodMesh) scene.add(c.woodMesh);
+            if (c.reinfMesh) scene.add(c.reinfMesh);
+            if (c.ashMesh) scene.add(c.ashMesh);
+            if (c.vinuMesh) scene.add(c.vinuMesh);
+            if (c.crateMesh) scene.add(c.crateMesh);
+          }
+          dimChunkCache.vinu = null;
+          for (const b of dimBeaconCache.vinu) { b.baseMesh.visible = true; b.beamMesh.visible = true; beacons.push(b); }
+          dimBeaconCache.vinu = null;
+        } else {
+          loadChunksAroundPlayer();
+        }
         {
           const gndY = getGroundY(playerBody.position.x, playerBody.position.z);
           if (gndY > 0) playerBody.position.y = gndY + PH / 2;
@@ -1446,34 +1475,27 @@
         ensureAboveGround();
         const bz = playerBody.position.z + 4;
         const bx = Math.floor(playerBody.position.x + halfX), bz2 = Math.floor(bz + halfZ);
-        const beaconBlockY = terrainHeightVinu(Math.floor(playerBody.position.x), Math.floor(bz)) + 1;
-        const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz2 / CHUNK), cyc = Math.floor(beaconBlockY / CHUNK);
-        const chunk = ensureChunkSync(cxc, czc, cyc);
-        const localId = chunkLocalIdx(chunk, bx, bz2, beaconBlockY);
-        if (chunk.states[localId] === 0) {
-          chunk.states[localId] = 5;
-        }
-        const wx = bx - halfX + 0.5, wy = beaconBlockY + 0.5, wz = bz2 - halfZ + 0.5;
-        for (let i = 0; i < BEACON_POOL; i++) {
-          const bm = beaconBaseMeshes[i];
-          if (bm.visible) continue;
-          bm.position.set(wx, wy, wz);
-          bm.material = beaconBaseMat.clone();
-          bm.visible = true;
-          const bbm = beaconBeamMeshes[i];
-          bbm.position.set(wx, wy + 0.5 + 500, wz);
-          bbm.visible = true;
-          beacons.push({ x: wx, y: wy, z: wz, bx, by: beaconBlockY, bz: bz2, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
-          break;
+        const beaconBlockY = terrainHeightVinu(bx, bz2) + 1;
+        if (!beacons.some(b => b.bx === bx && b.bz === bz2 && b.by === beaconBlockY)) {
+          const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz2 / CHUNK), cyc = Math.floor(beaconBlockY / CHUNK);
+          const chunk = ensureChunkSync(cxc, czc, cyc);
+          const localId = chunkLocalIdx(chunk, bx, bz2, beaconBlockY);
+          if (chunk.states[localId] === 0) { chunk.states[localId] = 5; }
+          const wx = bx - halfX + 0.5, wy = beaconBlockY + 0.5, wz = bz2 - halfZ + 0.5;
+          for (let i = 0; i < BEACON_POOL; i++) {
+            const bm = beaconBaseMeshes[i];
+            if (bm.visible) continue;
+            bm.position.set(wx, wy, wz);
+            bm.material = beaconBaseMat.clone();
+            bm.visible = true;
+            const bbm = beaconBeamMeshes[i];
+            bbm.position.set(wx, wy + 0.5 + 500, wz);
+            bbm.visible = true;
+            beacons.push({ x: wx, y: wy, z: wz, bx, by: beaconBlockY, bz: bz2, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
+            break;
+          }
         }
       } else {
-        loadedChunks.clear();
-        chunkBuildQueue.length = 0;
-        visibleMeshes.length = 0;
-        for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
-        beacons.length = 0;
-        projectiles.length = 0;
-        scrapItems.length = 0;
         currentDim = 'paperia';
         scene.background = skyTex;
         scene.fog.color.setHex(0xdceeff);
@@ -1481,7 +1503,23 @@
         playerBody.position.y = terrainHeight(Math.floor(playerBody.position.x), Math.floor(playerBody.position.z)) + PH / 2 + 1;
         velocity.set(0, 0, 0);
         onGround = true;
-        loadChunksAroundPlayer();
+        if (dimChunkCache.paperia) {
+          for (const [key, c] of dimChunkCache.paperia) {
+            loadedChunks.set(key, c);
+            if (c.mesh) scene.add(c.mesh);
+            if (c.waterMesh) scene.add(c.waterMesh);
+            if (c.woodMesh) scene.add(c.woodMesh);
+            if (c.reinfMesh) scene.add(c.reinfMesh);
+            if (c.ashMesh) scene.add(c.ashMesh);
+            if (c.vinuMesh) scene.add(c.vinuMesh);
+            if (c.crateMesh) scene.add(c.crateMesh);
+          }
+          dimChunkCache.paperia = null;
+          for (const b of dimBeaconCache.paperia) { b.baseMesh.visible = true; b.beamMesh.visible = true; beacons.push(b); }
+          dimBeaconCache.paperia = null;
+        } else {
+          loadChunksAroundPlayer();
+        }
         {
           const gndY = getGroundY(playerBody.position.x, playerBody.position.z);
           if (gndY > 0) playerBody.position.y = gndY + PH / 2;

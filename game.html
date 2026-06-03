@@ -1535,16 +1535,9 @@
           dimBeaconCache.vinu = null;
         } else {
           loadChunksAroundPlayer();
-        }
-        {
-          const gndY = getGroundY(playerBody.position.x, playerBody.position.z);
-          if (gndY > 0) playerBody.position.y = gndY + PH / 2;
-        }
-        ensureAboveGround();
-        const bz = playerBody.position.z + 4;
-        const bx = Math.floor(playerBody.position.x + halfX), bz2 = Math.floor(bz + halfZ);
-        const beaconBlockY = terrainHeightVinu(bx, bz2);
-        if (!beacons.some(b => b.bx === bx && b.bz === bz2 && b.by === beaconBlockY)) {
+          const bz = playerBody.position.z + 4;
+          const bx = Math.floor(playerBody.position.x + halfX), bz2 = Math.floor(bz + halfZ);
+          const beaconBlockY = terrainHeightVinu(bx, bz2);
           const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz2 / CHUNK), cyc = Math.floor(beaconBlockY / CHUNK);
           const chunk = ensureChunkSync(cxc, czc, cyc);
           const localId = chunkLocalIdx(chunk, bx, bz2, beaconBlockY);
@@ -1563,6 +1556,11 @@
             break;
           }
         }
+        {
+          const gndY = getGroundY(playerBody.position.x, playerBody.position.z);
+          if (gndY > 0) playerBody.position.y = gndY + PH / 2;
+        }
+        ensureAboveGround();
       } else {
         currentDim = 'paperia';
         scene.background = skyTex;

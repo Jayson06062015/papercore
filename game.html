@@ -257,17 +257,39 @@
     });
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 
   <script>
     if (typeof THREE === 'undefined') {
       document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:20px;color:#333">Failed to load Three.js</div>';
     }
 
+    const firebaseConfig = {
+      apiKey: "AIzaSyBDBaTP1y_jTsONYc90d4krMgIOL9L2NFI",
+      authDomain: "papercore-online.firebaseapp.com",
+      projectId: "papercore-online",
+      storageBucket: "papercore-online.firebasestorage.app",
+      messagingSenderId: "628416077509",
+      appId: "1:628416077509:web:6a37a665e6c59f44b7daac"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    let currentUser = null;
+    let saveKey = '';
+    const authReady = new Promise(resolve => {
+      auth.onAuthStateChanged(u => { currentUser = u; saveKey = u ? 'papercore_save_' + u.uid : ''; resolve(u); });
+    });
+
+    (async () => {
+    const user = await authReady;
+    if (!user) { window.location.href = 'index.html'; return; }
+
     const isMobile = 'ontouchstart' in window;
     const isLoadMode = new URLSearchParams(location.search).get('mode') === 'load';
     if (isLoadMode) {
       try {
-        const raw = localStorage.getItem('papercore_save_v1');
+        const raw = localStorage.getItem(saveKey);
         if (raw) {
           const sd = JSON.parse(raw);
           if (sd.worldSize) document.getElementById('wsInput').value = sd.worldSize.join('-');
@@ -1220,14 +1242,14 @@
       for (const chunk of loadedChunks.values()) {
         data.chunks.push({ cx: chunk.cx, cy: chunk.cy, cz: chunk.cz, sy: chunk.sy, states: Array.from(chunk.states) });
       }
-      localStorage.setItem('papercore_save_v1', JSON.stringify(data));
+      localStorage.setItem(saveKey, JSON.stringify(data));
       const n = document.getElementById('save-notice');
       n.style.display = 'block';
       setTimeout(() => n.style.display = 'none', 2000);
     }
     function loadGame() {
       try {
-        const raw = localStorage.getItem('papercore_save_v1');
+        const raw = localStorage.getItem(saveKey);
         if (!raw) return false;
         const data = JSON.parse(raw);
         for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
@@ -3236,6 +3258,7 @@
     }
 
     animate();
+    })();
   </script>
 </body>
 </html>

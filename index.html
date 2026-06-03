@@ -14,21 +14,102 @@
     .btn:active { transform:translate(0,0); box-shadow:4px 4px 0 black; }
     .btn:disabled { background:#ccc; color:#888; cursor:not-allowed; box-shadow:2px 2px 0 #999; transform:none; }
     .btn:disabled:hover { background:#ccc; box-shadow:2px 2px 0 #999; }
+    .auth-btn { display:inline-flex; align-items:center; gap:10px; padding:12px 24px; font-size:18px; font-family:"Poppins",sans-serif; font-weight:700; border:3px solid black; cursor:pointer; box-shadow:4px 4px 0 black; margin:8px; min-width:200px; transition:0.15s; border-radius:0; }
+    .auth-btn:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 black; }
+    .auth-btn img { width:24px; height:24px; }
+    #userInfo { display:none; align-items:center; gap:12px; margin-bottom:20px; padding:12px 24px; background:white; border:3px solid black; box-shadow:4px 4px 0 black; }
+    #userInfo img { width:40px; height:40px; border-radius:50%; }
+    #userInfo span { font-weight:700; font-size:18px; }
+    #authSection { margin-bottom:20px; }
+    .signout-btn { background:#ffe0e0; }
+    .signout-btn:hover { background:#ffcccc; }
+    .google-btn { background:white; }
+    .github-btn { background:#222; color:white; }
   </style>
 </head>
 <body>
   <div id="menu">
     <h1>PAPERCORE</h1>
-    <button class="btn" onclick="window.location.href='game.html?mode=new'">NEW GAME</button>
-    <button class="btn" onclick="window.location.href='game.html?mode=load&v='+Date.now()">LOAD GAME</button>
+    <div id="authSection">
+      <div id="userInfo">
+        <img id="userAvatar" src="" alt="">
+        <span id="userName"></span>
+        <button class="btn signout-btn" id="signOutBtn" style="margin:0;min-width:auto;padding:8px 16px;font-size:14px;">SIGN OUT</button>
+      </div>
+      <div id="authButtons">
+        <button class="auth-btn google-btn" id="googleBtn">
+          <svg width="24" height="24" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.54 28.59A14.5 14.5 0 0 1 9.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.99 23.99 0 0 0 0 24c0 3.77.87 7.35 2.56 10.59l7.98-6z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6C6.51 42.62 14.62 48 24 48z"/></svg>
+          Sign in with Google
+        </button>
+        <button class="auth-btn github-btn" id="githubBtn">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          Sign in with GitHub
+        </button>
+      </div>
+    </div>
+    <button class="btn" id="newGameBtn" disabled>NEW GAME</button>
+    <button class="btn" id="loadGameBtn" disabled>LOAD GAME</button>
     <button class="btn" onclick="window.location.href='updates.html'">UPDATE LOG</button>
   </div>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
   <script>
-    const loadBtn = document.getElementById('loadBtn');
-    if(localStorage.getItem('papercore_save_v1') === null) {
-      loadBtn.disabled = true;
-      loadBtn.title = "No save file found. Save in-game first.";
+    const firebaseConfig = {
+      apiKey: "AIzaSyBDBaTP1y_jTsONYc90d4krMgIOL9L2NFI",
+      authDomain: "papercore-online.firebaseapp.com",
+      projectId: "papercore-online",
+      storageBucket: "papercore-online.firebasestorage.app",
+      messagingSenderId: "628416077509",
+      appId: "1:628416077509:web:6a37a665e6c59f44b7daac"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    const newGameBtn = document.getElementById('newGameBtn');
+    const loadGameBtn = document.getElementById('loadGameBtn');
+    const authButtons = document.getElementById('authButtons');
+    const userInfo = document.getElementById('userInfo');
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const signOutBtn = document.getElementById('signOutBtn');
+
+    function showGameButtons(user) {
+      authButtons.style.display = 'none';
+      userInfo.style.display = 'flex';
+      userAvatar.src = user.photoURL || './Paper.png';
+      userName.textContent = user.displayName || user.email || 'Player';
+      newGameBtn.disabled = false;
+      const saveKey = 'papercore_save_' + user.uid;
+      loadGameBtn.disabled = localStorage.getItem(saveKey) === null;
+      loadGameBtn.title = localStorage.getItem(saveKey) === null ? 'No save found' : '';
+      newGameBtn.onclick = () => window.location.href = 'game.html?mode=new';
+      loadGameBtn.onclick = () => window.location.href = 'game.html?mode=load&v=' + Date.now();
     }
+
+    function showAuthButtons() {
+      authButtons.style.display = 'block';
+      userInfo.style.display = 'none';
+      newGameBtn.disabled = true;
+      loadGameBtn.disabled = true;
+    }
+
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        showGameButtons(user);
+      } else {
+        showAuthButtons();
+      }
+    });
+
+    document.getElementById('googleBtn').addEventListener('click', () => {
+      auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert(e.message));
+    });
+
+    document.getElementById('githubBtn').addEventListener('click', () => {
+      auth.signInWithPopup(new firebase.auth.GithubAuthProvider()).catch(e => alert(e.message));
+    });
+
+    signOutBtn.addEventListener('click', () => auth.signOut());
   </script>
 </body>
 </html>

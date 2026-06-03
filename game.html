@@ -259,6 +259,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 
   <script>
     if (typeof THREE === 'undefined') {
@@ -275,10 +276,11 @@
     };
     firebase.initializeApp(firebaseConfig);
     const auth = firebase.auth();
+    const db = firebase.firestore();
     let currentUser = null;
-    let saveKey = '';
+    let worldId = new URLSearchParams(location.search).get('world') || '';
     const authReady = new Promise(resolve => {
-      auth.onAuthStateChanged(u => { currentUser = u; saveKey = u ? 'papercore_save_' + u.uid : ''; resolve(u); });
+      auth.onAuthStateChanged(u => { currentUser = u; resolve(u); });
     });
 
     (async () => {
@@ -287,16 +289,7 @@
 
     const isMobile = 'ontouchstart' in window;
     const isLoadMode = new URLSearchParams(location.search).get('mode') === 'load';
-    if (isLoadMode) {
-      try {
-        const raw = localStorage.getItem(saveKey);
-        if (raw) {
-          const sd = JSON.parse(raw);
-          if (sd.worldSize) document.getElementById('wsInput').value = sd.worldSize.join('-');
-        }
-      } catch(e) {}
-      document.getElementById('wsInput').parentElement.style.display = 'none';
-    }
+    if (isLoadMode) document.getElementById('wsInput').parentElement.style.display = 'none';
     const wsParts = (document.getElementById('wsInput').value || '200-100-200').split('-').map(Number);
     const gridX = Math.max(20, wsParts[0] || 200);
     const gridZ = Math.max(20, wsParts[2] || wsParts[0] || 200);
@@ -1224,7 +1217,8 @@
       if (e.button === 0 && isBreaking) resetBreak();
       if (e.button === 2) attachHealTimer = -1;
     });
-    function saveGame() {
+    async function saveGame() {
+      if (!currentUser || !worldId) return;
       const data = {
         player: {
           x: playerBody.position.x, y: playerBody.position.y, z: playerBody.position.z,
@@ -1242,16 +1236,20 @@
       for (const chunk of loadedChunks.values()) {
         data.chunks.push({ cx: chunk.cx, cy: chunk.cy, cz: chunk.cz, sy: chunk.sy, states: Array.from(chunk.states) });
       }
-      localStorage.setItem(saveKey, JSON.stringify(data));
+      await db.collection('users').doc(currentUser.uid).collection('worlds').doc(worldId).update({
+        data: JSON.stringify(data),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
       const n = document.getElementById('save-notice');
       n.style.display = 'block';
       setTimeout(() => n.style.display = 'none', 2000);
     }
-    function loadGame() {
+    async function loadGame() {
+      if (!currentUser || !worldId) return false;
       try {
-        const raw = localStorage.getItem(saveKey);
-        if (!raw) return false;
-        const data = JSON.parse(raw);
+        const doc = await db.collection('users').doc(currentUser.uid).collection('worlds').doc(worldId).get();
+        if (!doc.exists || !doc.data().data) return false;
+        const data = JSON.parse(doc.data().data);
         for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
         for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
         for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
@@ -1959,8 +1957,8 @@
         renderer.domElement.requestPointerLock();
       }
     });
-    document.getElementById('btn-back-menu').addEventListener('click', () => {
-      if (autoSaveEnabled) saveGame();
+    document.getElementById('btn-back-menu').addEventListener('click', async () => {
+      if (autoSaveEnabled) await saveGame();
       if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
       window.location.href = 'index.html';
     });
@@ -1986,15 +1984,15 @@
       isPaused = false;
       document.getElementById('pause-overlay').style.display = 'none';
     }, { passive: false });
-    document.getElementById('btn-back-menu').addEventListener('touchstart', (e) => {
+    document.getElementById('btn-back-menu').addEventListener('touchstart', async (e) => {
       e.preventDefault();
-      if (autoSaveEnabled) saveGame();
+      if (autoSaveEnabled) await saveGame();
       window.location.href = 'index.html';
     }, { passive: false });
 
     document.getElementById('btn-respawn').addEventListener('click', respawn);
-    document.getElementById('btn-death-menu').addEventListener('click', () => {
-      if (autoSaveEnabled) saveGame();
+    document.getElementById('btn-death-menu').addEventListener('click', async () => {
+      if (autoSaveEnabled) await saveGame();
       if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
       window.location.href = 'index.html';
     });
@@ -2002,9 +2000,9 @@
       e.preventDefault();
       respawn();
     }, { passive: false });
-    document.getElementById('btn-death-menu').addEventListener('touchstart', (e) => {
+    document.getElementById('btn-death-menu').addEventListener('touchstart', async (e) => {
       e.preventDefault();
-      if (autoSaveEnabled) saveGame();
+      if (autoSaveEnabled) await saveGame();
       window.location.href = 'index.html';
     }, { passive: false });
 
@@ -3253,8 +3251,8 @@
       renderer.render(scene, camera);
     }
 
-    if (new URLSearchParams(location.search).get('mode') === 'load') {
-      loadGame();
+    if (isLoadMode) {
+      await loadGame();
     }
 
     animate();

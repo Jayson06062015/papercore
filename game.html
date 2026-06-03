@@ -552,6 +552,7 @@
               ashMesh.setMatrixAt(i, pm);
               vinuMesh.setMatrixAt(i, pm);
               crateMesh.setMatrixAt(i, pm);
+              gemMesh.setMatrixAt(i, pm);
             } else if (state === 6) {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               ashMesh.setMatrixAt(i, pm);
@@ -1283,30 +1284,6 @@
         if (currentDim === 'vinu') {
           scene.background = new THREE.Color(0x440000);
           scene.fog.color.setHex(0x440000);
-          const px = data.player.x, pz = data.player.z + 4;
-          const bx = Math.floor(px + halfX), bz = Math.floor(pz + halfZ);
-          const beaconBlockY = terrainHeightVinu(bx, bz) + 1;
-          const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(beaconBlockY / CHUNK);
-          const chunk = ensureChunkSync(cxc, czc, cyc);
-          const localId = chunkLocalIdx(chunk, bx, bz, beaconBlockY);
-          if (chunk.states[localId] === 0) {
-            chunk.states[localId] = 5;
-          }
-          const wx = bx - halfX + 0.5, wy2 = beaconBlockY + 0.5, wz = bz - halfZ + 0.5;
-          if (!beacons.some(b => b.x === wx && b.z === wz)) {
-            for (let i = 0; i < BEACON_POOL; i++) {
-              const bm = beaconBaseMeshes[i];
-              if (bm.visible) continue;
-              bm.position.set(wx, wy2, wz);
-              bm.material = beaconBaseMat.clone();
-              bm.visible = true;
-              const bbm = beaconBeamMeshes[i];
-              bbm.position.set(wx, wy2 + 0.5 + 500, wz);
-              bbm.visible = true;
-              beacons.push({ x: wx, y: wy2, z: wz, bx, by: beaconBlockY, bz, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
-              break;
-            }
-          }
         } else {
           scene.background = skyTex;
           scene.fog.color.setHex(0xdceeff);
@@ -1328,10 +1305,12 @@
           return { ...cd, mesh: mesh || null, flashTimer: 0 };
         });
         for (const [key, c] of loadedChunks) {
-          const ny = c.ny, nx = c.nx, nz = c.nz;
+          const ny = c.ny, nz = c.nz;
           for (let i = 0; i < c.states.length; i++) {
             if (c.states[i] === 5) {
-              const lx = i % nx, lz = Math.floor(i / nx) % nz, ly = Math.floor(i / (nx * nz));
+              const t1 = Math.floor(i / (nz * ny));
+              const t2 = i % (nz * ny);
+              const lx = t1, lz = Math.floor(t2 / ny), ly = t2 % ny;
               const wx = lx + c.sx - halfX + 0.5, wy = ly + c.sy + 0.5, wz = lz + c.sz - halfZ + 0.5;
               const bx = lx + c.sx, by = ly + c.sy, bz = lz + c.sz;
               if (beacons.some(b => b.bx === bx && b.by === by && b.bz === bz)) continue;
@@ -1348,6 +1327,26 @@
                 break;
               }
             }
+          }
+        }
+        if (currentDim === 'vinu' && beacons.length === 0) {
+          const px = data.player.x, pz2 = data.player.z + 4;
+          const bx2 = Math.floor(px + halfX), bz3 = Math.floor(pz2 + halfZ);
+          const by2 = terrainHeightVinu(bx2, bz3) + 1;
+          const cxc2 = Math.floor(bx2 / CHUNK), czc2 = Math.floor(bz3 / CHUNK), cyc2 = Math.floor(by2 / CHUNK);
+          const chunk2 = ensureChunkSync(cxc2, czc2, cyc2);
+          const lid = chunkLocalIdx(chunk2, bx2, bz3, by2);
+          if (chunk2.states[lid] === 0) { chunk2.states[lid] = 5; }
+          const wx2 = bx2 - halfX + 0.5, wy3 = by2 + 0.5, wz2 = bz3 - halfZ + 0.5;
+          for (let i = 0; i < BEACON_POOL; i++) {
+            const bm = beaconBaseMeshes[i];
+            if (bm.visible) continue;
+            bm.position.set(wx2, wy3, wz2);
+            bm.material = beaconBaseMat.clone(); bm.visible = true;
+            const bbm = beaconBeamMeshes[i];
+            bbm.position.set(wx2, wy3 + 0.5 + 500, wz2); bbm.visible = true;
+            beacons.push({ x: wx2, y: wy3, z: wz2, bx: bx2, by: by2, bz: bz3, baseMesh: bm, beamMesh: bbm, angle: Math.random() * Math.PI * 2 });
+            break;
           }
         }
         updateInventoryUI();

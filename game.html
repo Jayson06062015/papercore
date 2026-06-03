@@ -275,6 +275,7 @@
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 2, 512);
     const skyTex = new THREE.CanvasTexture(canvas);
+    skyTex.encoding = THREE.sRGBEncoding;
 
     const isMobile = 'ontouchstart' in window;
     const isLoadMode = new URLSearchParams(location.search).get('mode') === 'load';

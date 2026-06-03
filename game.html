@@ -2277,8 +2277,8 @@
     const recipes = [
       { id: 'paper_block', name: 'Paper Block', result: 'paper_block', resultImg: './Paper Block.png', ingredients: [{ type: 'scrap', count: 8, img: './Paper Scrap.png' }] },
       { id: 'water_block', name: 'Water Block', result: 'water_block', resultImg: './Water Block.png', ingredients: [{ type: 'waterball', count: 4, img: './Water Ball.png' }] },
-      { id: 'paper_ball', name: 'Paper Ball', result: 'paper_ball', resultImg: './Paper Ball.png', ingredients: [{ type: 'scrap', count: 4, img: './Paper Scrap.png' }] },
-      { id: 'reinforced', name: 'Reinforced Paper Ball', result: 'reinforced', resultImg: './Reinforced Paper Ball.png', ingredients: [{ type: 'paper_ball', count: 2, img: './Paper Ball.png' }, { type: 'waterball', count: 2, img: './Water Ball.png' }] },
+      { id: 'paper_ball', name: 'Paper Ball', result: 'paper_ball', resultImg: './Paper Ball.png', ingredients: [{ type: 'scrap', count: 2, img: './Paper Scrap.png' }] },
+      { id: 'reinforced', name: 'Reinforced Paper Ball', result: 'reinforced', resultImg: './Reinforced Paper Ball.png', resultCount: 2, ingredients: [{ type: 'paper_ball', count: 1, img: './Paper Ball.png' }, { type: 'waterball', count: 1, img: './Water Ball.png' }] },
       { id: 'paper', name: 'Paper', result: 'paper', resultImg: './Paper.png', ingredients: [{ type: 'scrap', count: 10, img: './Paper Scrap.png' }] },
       { id: 'cardboard', name: 'Cardboard', result: 'cardboard', resultImg: './Cardboard.png', ingredients: [{ type: 'paper', count: 10, img: './Paper.png' }] },
       { id: 'wood_plank', name: 'Wood Plank', result: 'wood_plank', resultImg: './Wood Plank.png', ingredients: [{ type: 'cardboard', count: 10, img: './Cardboard.png' }] },
@@ -2355,7 +2355,8 @@
       for (const ing of r.ingredients) {
         removeItems(ing.type, ing.count);
       }
-      addToInventory(r.result);
+      const count = r.resultCount || 1;
+      for (let i = 0; i < count; i++) addToInventory(r.result);
       updateMakeButtons();
     });
 

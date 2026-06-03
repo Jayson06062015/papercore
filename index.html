@@ -25,6 +25,16 @@
     .signout-btn:hover { background:#ffcccc; }
     .google-btn { background:white; }
     .github-btn { background:#222; color:white; }
+    .divider { display:flex; align-items:center; gap:10px; margin:16px 0; color:#888; font-size:14px; }
+    .divider::before, .divider::after { content:''; flex:1; height:1px; background:#ccc; }
+    #emailForm { display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:8px; }
+    #emailForm input { width:220px; padding:10px 14px; font-size:15px; font-family:"Poppins",sans-serif; border:3px solid black; box-shadow:4px 4px 0 black; outline:none; transition:0.15s; }
+    #emailForm input:focus { box-shadow:2px 2px 0 black; transform:translate(2px,2px); }
+    .email-row { display:flex; gap:8px; }
+    .email-row .btn { min-width:auto; padding:10px 18px; font-size:14px; margin:0; }
+    .small-link { font-size:12px; color:#555; cursor:pointer; text-decoration:underline; margin-top:4px; }
+    .small-link:hover { color:#000; }
+    #authError { color:#d32f2f; font-size:13px; margin:4px 0; min-height:18px; }
   </style>
 </head>
 <body>
@@ -45,6 +55,17 @@
           <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
           Sign in with GitHub
         </button>
+        <div class="divider">or</div>
+        <div id="emailForm">
+          <input type="email" id="emailInput" placeholder="Email" autocomplete="email">
+          <input type="password" id="passInput" placeholder="Password" autocomplete="current-password">
+          <div id="authError"></div>
+          <div class="email-row">
+            <button class="btn" id="signInBtn">SIGN IN</button>
+            <button class="btn" id="signUpBtn">SIGN UP</button>
+          </div>
+          <span class="small-link" id="resetLink">Forgot password?</span>
+        </div>
       </div>
     </div>
     <button class="btn" id="newGameBtn" disabled>NEW GAME</button>
@@ -102,11 +123,41 @@
     });
 
     document.getElementById('googleBtn').addEventListener('click', () => {
-      auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => alert(e.message));
+      auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).catch(e => document.getElementById('authError').textContent = e.message);
     });
 
     document.getElementById('githubBtn').addEventListener('click', () => {
-      auth.signInWithPopup(new firebase.auth.GithubAuthProvider()).catch(e => alert(e.message));
+      auth.signInWithPopup(new firebase.auth.GithubAuthProvider()).catch(e => document.getElementById('authError').textContent = e.message);
+    });
+
+    const emailInput = document.getElementById('emailInput');
+    const passInput = document.getElementById('passInput');
+    const authError = document.getElementById('authError');
+
+    function doEmailAuth(fn) {
+      const email = emailInput.value.trim();
+      const pass = passInput.value;
+      if (!email || !pass) { authError.textContent = 'Fill in email and password'; return; }
+      authError.textContent = '';
+      fn(email, pass).catch(e => { authError.textContent = e.message; });
+    }
+
+    document.getElementById('signInBtn').addEventListener('click', () => {
+      doEmailAuth((e, p) => auth.signInWithEmailAndPassword(e, p));
+    });
+
+    document.getElementById('signUpBtn').addEventListener('click', () => {
+      doEmailAuth((e, p) => auth.createUserWithEmailAndPassword(e, p));
+    });
+
+    document.getElementById('resetLink').addEventListener('click', () => {
+      const email = emailInput.value.trim();
+      if (!email) { authError.textContent = 'Enter your email first'; return; }
+      auth.sendPasswordResetEmail(email).then(() => {
+        authError.textContent = 'Reset email sent!';
+        authError.style.color = '#2e7d32';
+        setTimeout(() => authError.style.color = '#d32f2f', 3000);
+      }).catch(e => { authError.textContent = e.message; });
     });
 
     signOutBtn.addEventListener('click', () => auth.signOut());

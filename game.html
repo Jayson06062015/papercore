@@ -263,20 +263,6 @@
       document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:20px;color:#333">Failed to load Three.js</div>';
     }
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 2;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    const grad = ctx.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, '#0d47a1');
-    grad.addColorStop(0.4, '#1976d2');
-    grad.addColorStop(0.7, '#4fc3f7');
-    grad.addColorStop(1, '#e3f2fd');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 2, 512);
-    const skyTex = new THREE.CanvasTexture(canvas);
-    skyTex.encoding = THREE.sRGBEncoding;
-
     const isMobile = 'ontouchstart' in window;
     const isLoadMode = new URLSearchParams(location.search).get('mode') === 'load';
     if (isLoadMode) {
@@ -296,7 +282,8 @@
     const halfX = gridX / 2, halfZ = gridZ / 2;
     let renderDist = isMobile ? 12 : 20;
     const scene = new THREE.Scene();
-    scene.background = skyTex;
+    const paperiaSky = new THREE.Color(0xdceeff);
+    scene.background = paperiaSky;
     scene.fog = new THREE.Fog(0xdceeff, renderDist * 0.3, renderDist * 1.2);
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
 
@@ -1290,7 +1277,7 @@
           scene.background = new THREE.Color(0x440000);
           scene.fog.color.setHex(0x440000);
         } else {
-          scene.background = skyTex;
+          scene.background = paperiaSky;
           scene.fog.color.setHex(0xdceeff);
         }
         crateInventories.clear();
@@ -1564,7 +1551,7 @@
         ensureAboveGround();
       } else {
         currentDim = 'paperia';
-        scene.background = skyTex;
+        scene.background = paperiaSky;
         scene.fog.color.setHex(0xdceeff);
         playerBody.position.x -= DIM_OFFSET;
         playerBody.position.y = terrainHeight(Math.floor(playerBody.position.x), Math.floor(playerBody.position.z)) + PH / 2 + 1;
@@ -1644,7 +1631,7 @@
       playerHealth = maxHealth;
       updateHealthDisplay();
       currentDim = 'paperia';
-      scene.background = skyTex;
+      scene.background = paperiaSky;
       scene.fog.color.setHex(0xdceeff);
       for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
       beacons.length = 0;

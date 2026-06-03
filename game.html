@@ -453,7 +453,7 @@
           for (let y = sy; y < ey; y++) {
             if (currentDim === 'vinu') {
               if (y >= h) { states[i] = 0; }
-              else { const r = Math.random(); states[i] = r < 0.49 ? 6 : (r < 0.98 ? 7 : 9); }
+              else { const r = Math.random(); states[i] = r < 0.49 ? 6 : (r < 0.998 ? 7 : 9); }
             } else {
               states[i] = y >= h ? 0 : (Math.random() < 0.05 ? 2 : 1);
             }

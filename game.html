@@ -406,6 +406,9 @@
     const crateTex = new THREE.TextureLoader().load('./Paper Crate.png');
     crateTex.encoding = THREE.sRGBEncoding;
     const crateMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: crateTex, roughness: 0.8 });
+    const vinuGemTex = new THREE.TextureLoader().load('./Vinu Gem Block.png');
+    vinuGemTex.encoding = THREE.sRGBEncoding;
+    const vinuGemMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: vinuGemTex, roughness: 0.4 });
     const waterBallTex = new THREE.TextureLoader().load('./Water Ball.png');
     waterBallTex.encoding = THREE.sRGBEncoding;
     const waterBallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterBallTex, transparent: true });
@@ -441,7 +444,8 @@
           const h = hFn(x, z);
           for (let y = sy; y < ey; y++) {
             if (currentDim === 'vinu') {
-              states[i] = y >= h ? 0 : (Math.random() < 0.5 ? 6 : 7);
+              if (y >= h) { states[i] = 0; }
+              else { const r = Math.random(); states[i] = r < 0.49 ? 6 : (r < 0.98 ? 7 : 9); }
             } else {
               states[i] = y >= h ? 0 : (Math.random() < 0.05 ? 2 : 1);
             }
@@ -450,7 +454,7 @@
         }
       }
       c = {
-        mesh: null, waterMesh: null, woodMesh: null, reinfMesh: null, ashMesh: null, vinuMesh: null, crateMesh: null, states, nx, ny, nz, sx, sy, sz, cx, cy, cz,
+        mesh: null, waterMesh: null, woodMesh: null, reinfMesh: null, ashMesh: null, vinuMesh: null, crateMesh: null, gemMesh: null, states, nx, ny, nz, sx, sy, sz, cx, cy, cz,
         center: new THREE.Vector3(
           (sx + ex - 1) / 2 - halfX + 0.5,
           (sy + ey - 1) / 2 + 0.5,
@@ -475,6 +479,7 @@
       const ashMesh = new THREE.InstancedMesh(cubeGeo, ashMat, count);
       const vinuMesh = new THREE.InstancedMesh(cubeGeo, vinuPowderMat, count);
       const crateMesh = new THREE.InstancedMesh(cubeGeo, crateMat, count);
+      const gemMesh = new THREE.InstancedMesh(cubeGeo, vinuGemMat, count);
       mesh.receiveShadow = true; mesh.castShadow = true;
       waterMesh.receiveShadow = true; waterMesh.castShadow = true;
       woodMesh.receiveShadow = true; woodMesh.castShadow = true;
@@ -482,6 +487,7 @@
       ashMesh.receiveShadow = true; ashMesh.castShadow = true;
       vinuMesh.receiveShadow = true; vinuMesh.castShadow = true;
       crateMesh.receiveShadow = true; crateMesh.castShadow = true;
+      gemMesh.receiveShadow = true; gemMesh.castShadow = true;
       const pm = new THREE.Matrix4();
       let i = 0;
       for (let x = sx; x < ex; x++) {
@@ -568,6 +574,18 @@
               reinfMesh.setMatrixAt(i, pm);
               ashMesh.setMatrixAt(i, pm);
               vinuMesh.setMatrixAt(i, pm);
+              gemMesh.setMatrixAt(i, pm);
+            } else if (state === 9) {
+              te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
+              gemMesh.setMatrixAt(i, pm);
+              te[0]=0;te[5]=0;te[10]=0;
+              mesh.setMatrixAt(i, pm);
+              waterMesh.setMatrixAt(i, pm);
+              woodMesh.setMatrixAt(i, pm);
+              reinfMesh.setMatrixAt(i, pm);
+              ashMesh.setMatrixAt(i, pm);
+              vinuMesh.setMatrixAt(i, pm);
+              crateMesh.setMatrixAt(i, pm);
             } else {
               te[0]=1;te[5]=1;te[10]=1;te[12]=wx;te[13]=wy;te[14]=wz;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
               mesh.setMatrixAt(i, pm);
@@ -578,6 +596,7 @@
               ashMesh.setMatrixAt(i, pm);
               vinuMesh.setMatrixAt(i, pm);
               crateMesh.setMatrixAt(i, pm);
+              gemMesh.setMatrixAt(i, pm);
             }
             i++;
           }
@@ -590,6 +609,7 @@
       ashMesh.instanceMatrix.needsUpdate = true;
       vinuMesh.instanceMatrix.needsUpdate = true;
       crateMesh.instanceMatrix.needsUpdate = true;
+      gemMesh.instanceMatrix.needsUpdate = true;
       const colArr = new Float32Array(count * 3);
       const waterColArr = new Float32Array(count * 3);
       const woodColArr = new Float32Array(count * 3);
@@ -597,6 +617,7 @@
       const ashColArr = new Float32Array(count * 3);
       const vinuColArr = new Float32Array(count * 3);
       const crateColArr = new Float32Array(count * 3);
+      const gemColArr = new Float32Array(count * 3);
       for (let ci = 0; ci < count; ci++) {
         const i3 = ci * 3;
         colArr[i3]=1; colArr[i3+1]=1; colArr[i3+2]=1;
@@ -606,6 +627,7 @@
         ashColArr[i3]=1; ashColArr[i3+1]=1; ashColArr[i3+2]=1;
         vinuColArr[i3]=1; vinuColArr[i3+1]=1; vinuColArr[i3+2]=1;
         crateColArr[i3]=1; crateColArr[i3+1]=1; crateColArr[i3+2]=1;
+        gemColArr[i3]=1; gemColArr[i3+1]=1; gemColArr[i3+2]=1;
       }
       mesh.instanceColor = new THREE.InstancedBufferAttribute(colArr, 3);
       waterMesh.instanceColor = new THREE.InstancedBufferAttribute(waterColArr, 3);
@@ -614,6 +636,7 @@
       ashMesh.instanceColor = new THREE.InstancedBufferAttribute(ashColArr, 3);
       vinuMesh.instanceColor = new THREE.InstancedBufferAttribute(vinuColArr, 3);
       crateMesh.instanceColor = new THREE.InstancedBufferAttribute(crateColArr, 3);
+      gemMesh.instanceColor = new THREE.InstancedBufferAttribute(gemColArr, 3);
       scene.add(mesh);
       scene.add(waterMesh);
       scene.add(woodMesh);
@@ -621,6 +644,7 @@
       scene.add(ashMesh);
       scene.add(vinuMesh);
       scene.add(crateMesh);
+      scene.add(gemMesh);
       c.mesh = mesh;
       c.waterMesh = waterMesh;
       c.woodMesh = woodMesh;
@@ -628,6 +652,7 @@
       c.ashMesh = ashMesh;
       c.vinuMesh = vinuMesh;
       c.crateMesh = crateMesh;
+      c.gemMesh = gemMesh;
     }
     function ensureChunkSync(cx, cz, cy) {
       const c = ensureChunk(cx, cz, cy);
@@ -673,6 +698,13 @@
       for (let iter = 0; iter < gridY * 2; iter++) {
         if (!playerCollidesAt(playerBody.position.x, playerBody.position.y, playerBody.position.z, true)) break;
         playerBody.position.y += 1;
+      }
+      const gndY = getGroundY(playerBody.position.x, playerBody.position.z);
+      if (gndY > 0) {
+        const targetY = gndY + PH / 2;
+        if (playerBody.position.y > targetY + 0.1) {
+          playerBody.position.y = targetY;
+        }
       }
     }
     function loadChunksAroundPlayer() {
@@ -859,10 +891,11 @@
       bbm.visible = false; scene.add(bbm);
       beaconBeamMeshes.push(bbm);
     }
+    const beaconDropGeo = new THREE.BoxGeometry(0.3, 0.08, 0.3);
     const BEACON_DROP_POOL = 10;
     const beaconDropPool = [];
     for (let i = 0; i < BEACON_DROP_POOL; i++) {
-      const m = new THREE.Mesh(beaconBaseGeo, beaconBaseMat);
+      const m = new THREE.Mesh(beaconDropGeo, beaconBaseMat);
       m.visible = false;
       scene.add(m);
       beaconDropPool.push(m);
@@ -888,6 +921,14 @@
       m.visible = false;
       scene.add(m);
       crateDropPool.push(m);
+    }
+    const GEM_DROP_POOL = 20;
+    const gemDropPool = [];
+    for (let i = 0; i < GEM_DROP_POOL; i++) {
+      const m = new THREE.Mesh(dropGeo, vinuGemMat);
+      m.visible = false;
+      scene.add(m);
+      gemDropPool.push(m);
     }
 
     function isSolidBlock(bx, bz, by) {
@@ -932,12 +973,12 @@
       const bp = idxToWorldPos(chunk, localId);
       const state = chunk.states[localId];
       chunk.states[localId] = 0;
-      for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh, chunk.ashMesh, chunk.vinuMesh, chunk.crateMesh]) {
+      for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh, chunk.ashMesh, chunk.vinuMesh, chunk.crateMesh, chunk.gemMesh]) {
         if (m) { m.setColorAt(localId, white); m.instanceColor.needsUpdate = true; }
       }
       const te = tempMat.elements;
       te[0]=0;te[5]=0;te[10]=0;te[12]=bp.x;te[13]=bp.y;te[14]=bp.z;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
-      for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh, chunk.ashMesh, chunk.vinuMesh, chunk.crateMesh]) {
+      for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh, chunk.ashMesh, chunk.vinuMesh, chunk.crateMesh, chunk.gemMesh]) {
         if (m) { m.setMatrixAt(localId, tempMat); m.instanceMatrix.needsUpdate = true; }
       }
 
@@ -980,6 +1021,13 @@
           mesh.position.set(bp.x, bp.y + 0.5, bp.z);
           mesh.visible = true;
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'paper_crate' });
+        }
+      } else if (state === 9) {
+        const mesh = freePoolMesh(gemDropPool);
+        if (mesh) {
+          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+          mesh.visible = true;
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'vinu_gem_block' });
         }
       } else if (state === 2) {
         const dropCount = 1 + Math.floor(Math.random() * 3);
@@ -1306,7 +1354,7 @@
       if (!hits.length) return;
       const hitObj = hits[0].object;
       let chunk = null;
-      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj) { chunk = c; break; } }
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj || c.gemMesh === hitObj) { chunk = c; break; } }
       let bx, by, bz;
       if (chunk) {
         const hi = hits[0].instanceId;
@@ -1360,14 +1408,15 @@
       const isAsh = sel.type === 'ash_block';
       const isVinu = sel.type === 'vinu_powder_block';
       const isCrate = sel.type === 'paper_crate';
+      const isGem = sel.type === 'vinu_gem_block';
       if (sel.type === 'beacon') { tryPlaceBeacon(); return; }
-      if (!isPaper && !isWater && !isWood && !isReinf && !isAsh && !isVinu && !isCrate) return;
+      if (!isPaper && !isWater && !isWood && !isReinf && !isAsh && !isVinu && !isCrate && !isGem) return;
       raycaster.setFromCamera({ x: 0, y: 0 }, camera);
       const hits = raycaster.intersectObjects(visibleMeshes);
       if (!hits.length) return;
       const hitObj = hits[0].object;
       let chunk = null;
-      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj) { chunk = c; break; } }
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj || c.gemMesh === hitObj) { chunk = c; break; } }
       let bx, by, bz;
       if (chunk) {
         const hi = hits[0].instanceId;
@@ -1404,20 +1453,20 @@
         pChunk.waterMesh.setMatrixAt(pId, tempMat);
         pChunk.waterMesh.instanceMatrix.needsUpdate = true;
         te[0]=0;te[5]=0;te[10]=0;
-        for (const m of [pChunk.mesh, pChunk.woodMesh, pChunk.reinfMesh]) { if (m) { m.setMatrixAt(pId, tempMat); m.instanceMatrix.needsUpdate = true; } }
+        for (const m of [pChunk.mesh, pChunk.woodMesh, pChunk.reinfMesh, pChunk.gemMesh]) { if (m) { m.setMatrixAt(pId, tempMat); m.instanceMatrix.needsUpdate = true; } }
       } else {
-        const state = isWood ? 3 : (isReinf ? 4 : (isAsh ? 6 : (isVinu ? 7 : (isCrate ? 8 : 1))));
-        const itemType = isWood ? 'wood_plank' : (isReinf ? 'reinforced_block' : (isAsh ? 'ash_block' : (isVinu ? 'vinu_powder_block' : (isCrate ? 'paper_crate' : 'paper_block'))));
+        const state = isWood ? 3 : (isReinf ? 4 : (isAsh ? 6 : (isVinu ? 7 : (isCrate ? 8 : (isGem ? 9 : 1)))));
+        const itemType = isWood ? 'wood_plank' : (isReinf ? 'reinforced_block' : (isAsh ? 'ash_block' : (isVinu ? 'vinu_powder_block' : (isCrate ? 'paper_crate' : (isGem ? 'vinu_gem_block' : 'paper_block')))));
         removeItems(itemType, 1);
         pChunk.states[pId] = state;
         const w = bx - halfX + 0.5, h = by + 0.5, d = bz - halfZ + 0.5;
         const te = tempMat.elements;
         te[0]=1;te[5]=1;te[10]=1;te[12]=w;te[13]=h;te[14]=d;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
-        const showMesh = isWood ? pChunk.woodMesh : (isReinf ? pChunk.reinfMesh : (isAsh ? pChunk.ashMesh : (isVinu ? pChunk.vinuMesh : (isCrate ? pChunk.crateMesh : pChunk.mesh))));
+        const showMesh = isWood ? pChunk.woodMesh : (isReinf ? pChunk.reinfMesh : (isAsh ? pChunk.ashMesh : (isVinu ? pChunk.vinuMesh : (isCrate ? pChunk.crateMesh : (isGem ? pChunk.gemMesh : pChunk.mesh)))));
         showMesh.setMatrixAt(pId, tempMat);
         showMesh.instanceMatrix.needsUpdate = true;
         te[0]=0;te[5]=0;te[10]=0;
-        for (const m of [pChunk.mesh, pChunk.waterMesh, pChunk.woodMesh, pChunk.reinfMesh, pChunk.ashMesh, pChunk.vinuMesh, pChunk.crateMesh]) {
+        for (const m of [pChunk.mesh, pChunk.waterMesh, pChunk.woodMesh, pChunk.reinfMesh, pChunk.ashMesh, pChunk.vinuMesh, pChunk.crateMesh, pChunk.gemMesh]) {
           if (m && m !== showMesh) { m.setMatrixAt(pId, tempMat); m.instanceMatrix.needsUpdate = true; }
         }
       }
@@ -1435,6 +1484,7 @@
         if (c.ashMesh) scene.remove(c.ashMesh);
         if (c.vinuMesh) scene.remove(c.vinuMesh);
         if (c.crateMesh) scene.remove(c.crateMesh);
+        if (c.gemMesh) scene.remove(c.gemMesh);
       }
       loadedChunks.clear();
       chunkBuildQueue.length = 0;
@@ -1465,6 +1515,7 @@
             if (c.ashMesh) scene.add(c.ashMesh);
             if (c.vinuMesh) scene.add(c.vinuMesh);
             if (c.crateMesh) scene.add(c.crateMesh);
+            if (c.gemMesh) scene.add(c.gemMesh);
           }
           dimChunkCache.vinu = null;
           for (const b of dimBeaconCache.vinu) { b.baseMesh.visible = true; b.beamMesh.visible = true; beacons.push(b); }
@@ -1517,6 +1568,7 @@
             if (c.ashMesh) scene.add(c.ashMesh);
             if (c.vinuMesh) scene.add(c.vinuMesh);
             if (c.crateMesh) scene.add(c.crateMesh);
+            if (c.gemMesh) scene.add(c.gemMesh);
           }
           dimChunkCache.paperia = null;
           for (const b of dimBeaconCache.paperia) { b.baseMesh.visible = true; b.beamMesh.visible = true; beacons.push(b); }
@@ -1594,7 +1646,24 @@
       chunkBuildQueue.length = 0;
       visibleMeshes.length = 0;
       playerBody.position.copy(startPos);
-      loadChunksAroundPlayer();
+      if (dimChunkCache.paperia) {
+        for (const [key, c] of dimChunkCache.paperia) {
+          loadedChunks.set(key, c);
+          if (c.mesh) scene.add(c.mesh);
+          if (c.waterMesh) scene.add(c.waterMesh);
+          if (c.woodMesh) scene.add(c.woodMesh);
+          if (c.reinfMesh) scene.add(c.reinfMesh);
+          if (c.ashMesh) scene.add(c.ashMesh);
+          if (c.vinuMesh) scene.add(c.vinuMesh);
+          if (c.crateMesh) scene.add(c.crateMesh);
+          if (c.gemMesh) scene.add(c.gemMesh);
+        }
+        dimChunkCache.paperia = null;
+        for (const b of dimBeaconCache.paperia) { b.baseMesh.visible = true; b.beamMesh.visible = true; beacons.push(b); }
+        dimBeaconCache.paperia = null;
+      } else {
+        loadChunksAroundPlayer();
+      }
       ensureAboveGround();
       velocity.set(0, 0, 0);
       onGround = true;
@@ -1957,7 +2026,8 @@
       ash_block:'./Ash Block.png',
       vinu_powder:'./Vinu Powder Block.png',
       vinu_powder_block:'./Vinu Powder Block.png',
-      paper_crate:'./Paper Crate.png'
+      paper_crate:'./Paper Crate.png',
+      vinu_gem_block:'./Vinu Gem Block.png'
     };
 
     function updateSlot(i) {
@@ -2184,7 +2254,7 @@
       if (!hits.length) return false;
       const hitObj = hits[0].object;
       let chunk = null;
-      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj) { chunk = c; break; } }
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj || c.gemMesh === hitObj) { chunk = c; break; } }
       if (!chunk) return false;
       const hid = hits[0].instanceId;
       if (chunk.states[hid] === 8 && distToBlock(chunk, hid) <= 5) {
@@ -2975,7 +3045,7 @@
           if (hits.length) {
             const hitObj = hits[0].object;
             let chunk = null;
-      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj) { chunk = c; break; } }
+      for (const c of loadedChunks.values()) { if (c.mesh === hitObj || c.waterMesh === hitObj || c.woodMesh === hitObj || c.reinfMesh === hitObj || c.ashMesh === hitObj || c.vinuMesh === hitObj || c.crateMesh === hitObj || c.gemMesh === hitObj) { chunk = c; break; } }
             if (chunk) {
               const hid = hits[0].instanceId;
               if (chunk.states[hid] === 1 && distToBlock(chunk, hid) <= 5) {
@@ -3029,6 +3099,12 @@
                 breakProgress = 0;
                 breakDuration = 1.5;
                 breakMesh = chunk.crateMesh;
+              } else if (chunk.states[hid] === 9 && distToBlock(chunk, hid) <= 5) {
+                breakChunk = chunk;
+                breakId = hid;
+                breakProgress = 0;
+                breakDuration = 0.5;
+                breakMesh = chunk.gemMesh;
               }
             } else {
               const beaconHit = beacons.find(b => b.baseMesh === hitObj);
@@ -3140,7 +3216,7 @@
             if (c.ashMesh) visibleMeshes.push(c.ashMesh);
             if (c.vinuMesh) visibleMeshes.push(c.vinuMesh);
             if (c.crateMesh) visibleMeshes.push(c.crateMesh);
-          }
+            if (c.gemMesh) visibleMeshes.push(c.gemMesh);
         }
         for (const b of beacons) { visibleMeshes.push(b.baseMesh); }
       }

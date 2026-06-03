@@ -417,6 +417,10 @@
     const vinuGemTex = new THREE.TextureLoader().load('./Vinu Gem Block.png');
     vinuGemTex.encoding = THREE.sRGBEncoding;
     const vinuGemMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: vinuGemTex, roughness: 0.4 });
+    const vinuGemDropMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+    const vinuGemDropTex = new THREE.TextureLoader().load('./Vinu Gem.png');
+    vinuGemDropTex.encoding = THREE.sRGBEncoding;
+    vinuGemDropMat.map = vinuGemDropTex;
     const waterBallTex = new THREE.TextureLoader().load('./Water Ball.png');
     waterBallTex.encoding = THREE.sRGBEncoding;
     const waterBallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: waterBallTex, transparent: true });
@@ -934,7 +938,7 @@
     const GEM_DROP_POOL = 20;
     const gemDropPool = [];
     for (let i = 0; i < GEM_DROP_POOL; i++) {
-      const m = new THREE.Mesh(dropGeo, vinuGemMat);
+      const m = new THREE.Mesh(dropGeo, vinuGemDropMat);
       m.visible = false;
       scene.add(m);
       gemDropPool.push(m);
@@ -1332,7 +1336,7 @@
         if (currentDim === 'vinu' && beacons.length === 0) {
           const px = data.player.x, pz2 = data.player.z + 4;
           const bx2 = Math.floor(px + halfX), bz3 = Math.floor(pz2 + halfZ);
-          const by2 = terrainHeightVinu(bx2, bz3) + 1;
+          const by2 = terrainHeightVinu(bx2, bz3);
           const cxc2 = Math.floor(bx2 / CHUNK), czc2 = Math.floor(bz3 / CHUNK), cyc2 = Math.floor(by2 / CHUNK);
           const chunk2 = ensureChunkSync(cxc2, czc2, cyc2);
           const lid = chunkLocalIdx(chunk2, bx2, bz3, by2);
@@ -1539,7 +1543,7 @@
         ensureAboveGround();
         const bz = playerBody.position.z + 4;
         const bx = Math.floor(playerBody.position.x + halfX), bz2 = Math.floor(bz + halfZ);
-        const beaconBlockY = terrainHeightVinu(bx, bz2) + 1;
+        const beaconBlockY = terrainHeightVinu(bx, bz2);
         if (!beacons.some(b => b.bx === bx && b.bz === bz2 && b.by === beaconBlockY)) {
           const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz2 / CHUNK), cyc = Math.floor(beaconBlockY / CHUNK);
           const chunk = ensureChunkSync(cxc, czc, cyc);

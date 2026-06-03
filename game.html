@@ -1023,11 +1023,13 @@
           scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'paper_crate' });
         }
       } else if (state === 9) {
-        const mesh = freePoolMesh(gemDropPool);
-        if (mesh) {
-          mesh.position.set(bp.x, bp.y + 0.5, bp.z);
+        const dropCount = 3 + Math.floor(Math.random() * 2);
+        for (let s = 0; s < dropCount; s++) {
+          const mesh = freePoolMesh(gemDropPool);
+          if (!mesh) break;
+          mesh.position.set(bp.x + (Math.random() - 0.5) * 0.6, bp.y + 0.5, bp.z + (Math.random() - 0.5) * 0.6);
           mesh.visible = true;
-          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'vinu_gem_block' });
+          scrapItems.push({ mesh, pos: mesh.position.clone(), velY: 0, onGround: false, pickupTimer: 0, itemType: 'vinu_gem' });
         }
       } else if (state === 2) {
         const dropCount = 1 + Math.floor(Math.random() * 3);
@@ -2027,6 +2029,7 @@
       vinu_powder:'./Vinu Powder Block.png',
       vinu_powder_block:'./Vinu Powder Block.png',
       paper_crate:'./Paper Crate.png',
+      vinu_gem:'./Vinu Gem.png',
       vinu_gem_block:'./Vinu Gem Block.png'
     };
 
@@ -2292,6 +2295,7 @@
       { id: 'ash_block', name: 'Ash Block', result: 'ash_block', resultImg: './Ash Block.png', ingredients: [{ type: 'ash', count: 8, img: './Ash Block.png' }] },
       { id: 'vinu_powder_block', name: 'Vinu Powder Block', result: 'vinu_powder_block', resultImg: './Vinu Powder Block.png', ingredients: [{ type: 'vinu_powder', count: 8, img: './Vinu Powder Block.png' }] },
       { id: 'paper_crate', name: 'Paper Crate', result: 'paper_crate', resultImg: './Paper Crate.png', ingredients: [{ type: 'paper', count: 12, img: './Paper.png' }] },
+      { id: 'vinu_gem_block', name: 'Vinu Gem Block', result: 'vinu_gem_block', resultImg: './Vinu Gem Block.png', ingredients: [{ type: 'vinu_gem', count: 4, img: './Vinu Gem.png' }] },
     ];
     let selectedRecipe = null;
     const recipeGrid = document.getElementById('recipeGrid');
@@ -3103,7 +3107,7 @@
                 breakChunk = chunk;
                 breakId = hid;
                 breakProgress = 0;
-                breakDuration = 0.5;
+                breakDuration = 30;
                 breakMesh = chunk.gemMesh;
               }
             } else {

@@ -403,6 +403,14 @@
     const vinuTex = new THREE.TextureLoader().load('./Vinu Powder Block.png');
     vinuTex.encoding = THREE.sRGBEncoding;
     vinuPowderMat.map = vinuTex;
+    const ashDropMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 });
+    const ashDropTex = new THREE.TextureLoader().load('./Ash.png');
+    ashDropTex.encoding = THREE.sRGBEncoding;
+    ashDropMat.map = ashDropTex;
+    const vinuPowderDropMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.7 });
+    const vinuPowderDropTex = new THREE.TextureLoader().load('./Vinu Powder.png');
+    vinuPowderDropTex.encoding = THREE.sRGBEncoding;
+    vinuPowderDropMat.map = vinuPowderDropTex;
     const crateTex = new THREE.TextureLoader().load('./Paper Crate.png');
     crateTex.encoding = THREE.sRGBEncoding;
     const crateMat = new THREE.MeshStandardMaterial({ color: 0xffffff, map: crateTex, roughness: 0.8 });
@@ -905,11 +913,11 @@
     const vinuDropPool = [];
     const dropGeo = new THREE.BoxGeometry(0.3, 0.08, 0.3);
     for (let i = 0; i < ASH_DROP_POOL; i++) {
-      const am = new THREE.Mesh(dropGeo, ashMat);
+      const am = new THREE.Mesh(dropGeo, ashDropMat);
       am.visible = false;
       scene.add(am);
       ashDropPool.push(am);
-      const vm = new THREE.Mesh(dropGeo, vinuPowderMat);
+      const vm = new THREE.Mesh(dropGeo, vinuPowderDropMat);
       vm.visible = false;
       scene.add(vm);
       vinuDropPool.push(vm);

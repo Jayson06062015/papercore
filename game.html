@@ -2032,9 +2032,9 @@
       cardboard_club:'./Cardboard Club.png',
       wood_club:'./Wood Club.png',
       beacon:'./Beacon.png',
-      ash:'./Ash Block.png',
+      ash:'./Ash.png',
       ash_block:'./Ash Block.png',
-      vinu_powder:'./Vinu Powder Block.png',
+      vinu_powder:'./Vinu Powder.png',
       vinu_powder_block:'./Vinu Powder Block.png',
       paper_crate:'./Paper Crate.png',
       vinu_gem:'./Vinu Gem.png',
@@ -3220,6 +3220,7 @@
           if (c.ashMesh) c.ashMesh.visible = !far;
           if (c.vinuMesh) c.vinuMesh.visible = !far;
           if (c.crateMesh) c.crateMesh.visible = !far;
+          if (c.gemMesh) c.gemMesh.visible = !far;
           if (!far) {
             visibleMeshes.push(c.mesh);
             if (c.waterMesh) visibleMeshes.push(c.waterMesh);

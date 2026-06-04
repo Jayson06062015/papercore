@@ -257,35 +257,45 @@
     });
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
     if (typeof THREE === 'undefined') {
       document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:20px;color:#333">Failed to load Three.js</div>';
     }
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyBDBaTP1y_jTsONYc90d4krMgIOL9L2NFI",
-      authDomain: "papercore-online.firebaseapp.com",
-      projectId: "papercore-online",
-      storageBucket: "papercore-online.firebasestorage.app",
-      messagingSenderId: "628416077509",
-      appId: "1:628416077509:web:6a37a665e6c59f44b7daac"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    const SUPABASE_URL = 'https://ucvgsggdsnzinowuvkmp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjdmdzZ2dkc256aW5vd3V2a21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NTMzMDAsImV4cCI6MjA5NjEyOTMwMH0.azrVxImOs_5T5mp-z1GUOeWHs5S01XdXvXEuW6y4FHw';
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let currentUser = null;
     let worldId = new URLSearchParams(location.search).get('world') || '';
     const authReady = new Promise(resolve => {
-      auth.onAuthStateChanged(u => { currentUser = u; resolve(u); });
+      sb.auth.onAuthStateChanged((event, session) => { currentUser = session?.user || null; resolve(session?.user || null); });
     });
+    let worldSeed = Math.floor(Math.random() * 2147483647);
+    let worldRng = () => Math.random();
+    function seedRng(seed) { worldSeed = seed; let s = seed | 0; worldRng = () => { s = (s * 1664525 + 1013904223) & 0x7fffffff; return s / 0x7fffffff; }; }
+    let isHost = false;
+    let otherPlayers = new Map();
+    let otherPlayerMeshes = [];
 
     (async () => {
     const user = await authReady;
     if (!user) { window.location.href = 'index.html'; return; }
+
+    if (worldId) {
+      try {
+        const { data: worldRec, error: we } = await sb.from('worlds').select('seed').eq('id', worldId).single();
+        if (we || !worldRec) {
+          const { data: newWorld } = await sb.from('worlds').insert({ id: worldId, name: worldId === 'server1' ? 'Server 1' : worldId, seed: Math.floor(Math.random() * 2147483647), owner_id: user.id }).select().single();
+          if (newWorld) seedRng(newWorld.seed);
+          if (worldId === 'server1' && newWorld) worldId = newWorld.id;
+        } else {
+          seedRng(worldRec.seed);
+        }
+      } catch(e) {}
+    }
 
     const isMobile = 'ontouchstart' in window;
     const isLoadMode = new URLSearchParams(location.search).get('mode') === 'load';
@@ -460,9 +470,9 @@
           for (let y = sy; y < ey; y++) {
             if (currentDim === 'vinu') {
               if (y >= h) { states[i] = 0; }
-              else { const r = Math.random(); states[i] = r < 0.49 ? 6 : (r < 0.998 ? 7 : 9); }
+              else { const r = worldRng(); states[i] = r < 0.49 ? 6 : (r < 0.998 ? 7 : 9); }
             } else {
-              states[i] = y >= h ? 0 : (Math.random() < 0.05 ? 2 : 1);
+              states[i] = y >= h ? 0 : (worldRng() < 0.05 ? 2 : 1);
             }
             i++;
           }
@@ -989,6 +999,7 @@
       const bp = idxToWorldPos(chunk, localId);
       const state = chunk.states[localId];
       chunk.states[localId] = 0;
+      if (worldId) sendBlockChange(Math.round(bp.x + halfX - 0.5), Math.round(bp.y - 0.5), Math.round(bp.z + halfZ - 0.5), 0);
       for (const m of [chunk.mesh, chunk.waterMesh, chunk.woodMesh, chunk.reinfMesh, chunk.ashMesh, chunk.vinuMesh, chunk.crateMesh, chunk.gemMesh]) {
         if (m) { m.setColorAt(localId, white); m.instanceColor.needsUpdate = true; }
       }
@@ -1227,6 +1238,7 @@
           selectedSlot
         },
         worldSize: [gridX, gridY, gridZ],
+        seed: worldSeed,
         dim: currentDim,
         chunks: [],
         glueys: glueys.map(g => ({ x: g.x, y: g.y, z: g.z, vy: g.vy, onGround: g.onGround, moveTimer: g.moveTimer, dirX: g.dirX, dirZ: g.dirZ, hp: g.hp, panicTimer: g.panicTimer })),
@@ -1236,10 +1248,12 @@
       for (const chunk of loadedChunks.values()) {
         data.chunks.push({ cx: chunk.cx, cy: chunk.cy, cz: chunk.cz, sy: chunk.sy, states: Array.from(chunk.states) });
       }
-      await db.collection('users').doc(currentUser.uid).collection('worlds').doc(worldId).update({
+      await sb.from('player_saves').upsert({
+        world_id: worldId,
+        user_id: currentUser.id,
         data: JSON.stringify(data),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'world_id,user_id', ignoreDuplicates: false });
       const n = document.getElementById('save-notice');
       n.style.display = 'block';
       setTimeout(() => n.style.display = 'none', 2000);
@@ -1247,9 +1261,12 @@
     async function loadGame() {
       if (!currentUser || !worldId) return false;
       try {
-        const doc = await db.collection('users').doc(currentUser.uid).collection('worlds').doc(worldId).get();
-        if (!doc.exists || !doc.data().data) return false;
-        const data = JSON.parse(doc.data().data);
+        const { data: worlds, error: we } = await sb.from('worlds').select('seed').eq('id', worldId).single();
+        if (!we && worlds?.seed) seedRng(worlds.seed);
+
+        const { data, error } = await sb.from('player_saves').select('data').eq('world_id', worldId).eq('user_id', currentUser.id).single();
+        if (error || !data || !data.data) return false;
+        const parsed = JSON.parse(data.data);
         for (const g of glueys) { if (g.mesh) { g.mesh.material.color.setHex(0xffffff); g.mesh.visible = false; } }
         for (const c of cartolines) { if (c.mesh) { c.mesh.material.color.setHex(0xffffff); c.mesh.visible = false; } }
         for (const b of beacons) { b.baseMesh.visible = false; b.beamMesh.visible = false; }
@@ -1266,33 +1283,33 @@
         loadedChunks.clear();
         chunkBuildQueue.length = 0;
         visibleMeshes.length = 0;
-        for (const cd of data.chunks) {
+        for (const cd of parsed.chunks) {
           const key = chunkKey(cd.cx, cd.cz, cd.cy);
           let chunk = loadedChunks.get(key);
           if (!chunk) {
             const sx = cd.cx * CHUNK, sz = cd.cz * CHUNK, sy = cd.cy * CHUNK;
             const ex = sx + CHUNK, ez = sz + CHUNK, ey = Math.min(sy + CHUNK, gridY);
             const nx = CHUNK, nz = CHUNK, ny = ey - sy;
-            chunk = { mesh: null, waterMesh: null, woodMesh: null, reinfMesh: null, ashMesh: null, vinuMesh: null, crateMesh: null, states: null, nx, ny, nz, sx, sy, sz, cx: cd.cx, cy: cd.cy, cz: cd.cz, center: new THREE.Vector3((sx + ex - 1) / 2 - halfX + 0.5, (sy + ey - 1) / 2 + 0.5, (sz + ez - 1) / 2 - halfZ + 0.5), isFar: false, key: key };
+            chunk = { mesh: null, waterMesh: null, woodMesh: null, reinfMesh: null, ashMesh: null, vinuMesh: null, crateMesh: null, gemMesh: null, states: null, nx, ny, nz, sx, sy, sz, cx: cd.cx, cy: cd.cy, cz: cd.cz, center: new THREE.Vector3((sx + ex - 1) / 2 - halfX + 0.5, (sy + ey - 1) / 2 + 0.5, (sz + ez - 1) / 2 - halfZ + 0.5), isFar: false, key: key };
             loadedChunks.set(key, chunk);
           }
           chunk.sy = cd.sy;
           chunk.states = new Uint8Array(cd.states);
           chunkBuildQueue.push(chunk.key);
         }
-        currentDim = data.dim || 'paperia';
-        playerBody.position.set(data.player.x, data.player.y, data.player.z);
+        currentDim = parsed.dim || 'paperia';
+        playerBody.position.set(parsed.player.x, parsed.player.y, parsed.player.z);
         loadChunksAroundPlayer();
         {
           const gndY = getGroundY(playerBody.position.x, playerBody.position.z);
           if (gndY > 0) playerBody.position.y = gndY + PH / 2;
         }
         ensureAboveGround();
-        playerHealth = data.player.health;
-        yaw = data.player.yaw;
-        pitch = data.player.pitch;
-        inventory = data.player.inventory.map(s => ({ type: s.type, count: s.count, durability: [...(s.durability||[])] }));
-        selectedSlot = data.player.selectedSlot;
+        playerHealth = parsed.player.health;
+        yaw = parsed.player.yaw;
+        pitch = parsed.player.pitch;
+        inventory = parsed.player.inventory.map(s => ({ type: s.type, count: s.count, durability: [...(s.durability||[])] }));
+        selectedSlot = parsed.player.selectedSlot;
         if (currentDim === 'vinu') {
           scene.background = new THREE.Color(0x440000);
           scene.fog.color.setHex(0x440000);
@@ -1468,6 +1485,7 @@
       if (isWater) {
         removeItems('water_block', 1);
         pChunk.states[pId] = 2;
+        if (worldId) sendBlockChange(bx, by, bz, 2);
         const w = bx - halfX + 0.5, h = by + 0.5, d = bz - halfZ + 0.5;
         const te = tempMat.elements;
         te[0]=1;te[5]=1;te[10]=1;te[12]=w;te[13]=h;te[14]=d;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
@@ -1480,6 +1498,7 @@
         const itemType = isWood ? 'wood_plank' : (isReinf ? 'reinforced_block' : (isAsh ? 'ash_block' : (isVinu ? 'vinu_powder_block' : (isCrate ? 'paper_crate' : (isGem ? 'vinu_gem_block' : 'paper_block')))));
         removeItems(itemType, 1);
         pChunk.states[pId] = state;
+        if (worldId) sendBlockChange(bx, by, bz, state);
         const w = bx - halfX + 0.5, h = by + 0.5, d = bz - halfZ + 0.5;
         const te = tempMat.elements;
         te[0]=1;te[5]=1;te[10]=1;te[12]=w;te[13]=h;te[14]=d;te[1]=te[2]=te[3]=te[4]=te[6]=te[7]=te[8]=te[9]=te[11]=0;te[15]=1;
@@ -1811,6 +1830,208 @@
       }
     });
 
+    // -- Multiplayer (Supabase Realtime Broadcast) --
+    let mpChannel = null;
+    let playerMeshGeo = new THREE.BoxGeometry(0.8, 0.9, 0.1);
+    let playerMeshMat = new THREE.MeshStandardMaterial({ map: new THREE.TextureLoader().load('./Papey.png'), transparent: true });
+    let isHost = false;
+    let mpPosSeq = 0;
+    let mpLastSentPos = new THREE.Vector3();
+    let mpLastSentYaw = 0;
+    let mpLastSentPitch = 0;
+    let mpPosTimer = 0;
+    let mpMobTimer = 0;
+    let mpBlockSub = null;
+
+    function onRemotePlayerPos(payload) {
+      const uid = payload.uid;
+      if (uid === currentUser.id) return;
+      let p = otherPlayers.get(uid);
+      if (!p) {
+        const mesh = new THREE.Mesh(playerMeshGeo, playerMeshMat.clone());
+        mesh.position.set(payload.x, payload.y, payload.z);
+        mesh.visible = payload.dim === currentDim;
+        scene.add(mesh);
+        otherPlayers.set(uid, { mesh, target: new THREE.Vector3(payload.x, payload.y, payload.z), yaw: payload.yaw || 0, pitch: payload.pitch || 0, health: payload.health, dim: payload.dim, lastSeq: payload.seq });
+        otherPlayerMeshes.push(mesh);
+      } else {
+        p.target.set(payload.x, payload.y, payload.z);
+        p.yaw = payload.yaw || 0;
+        p.pitch = payload.pitch || 0;
+        p.health = payload.health;
+        const sameDim = (payload.dim || 'paperia') === currentDim;
+        p.mesh.visible = sameDim;
+        p.lastSeq = payload.seq;
+      }
+    }
+
+    function onRemoteMobData(payload) {
+      if (isHost) return;
+      if (payload.gluey) {
+        for (const key in payload.gluey) {
+          const g = payload.gluey[key];
+          let found = false;
+          for (const lg of glueys) {
+            if (lg.remoteId === key) { lg.x = g.x; lg.y = g.y; lg.z = g.z; lg.dirX = g.dirX; lg.dirZ = g.dirZ; lg.hp = g.hp; lg.panicTimer = g.panicTimer || 0; if (lg.mesh) lg.mesh.visible = g.visible && g.dim === currentDim; found = true; break; }
+          }
+          if (!found) {
+            const freeMesh = glueyMeshes.find(m => !m.visible);
+            if (freeMesh) {
+              freeMesh.position.set(g.x, g.y, g.z);
+              freeMesh.material.color.setHex(0xffffff);
+              freeMesh.visible = g.visible && g.dim === currentDim;
+              glueys.push({ x: g.x, y: g.y, z: g.z, vy: 0, onGround: true, moveTimer: 999, dirX: g.dirX, dirZ: g.dirZ, mesh: freeMesh, hp: g.hp, panicTimer: g.panicTimer || 0, flashTimer: 0, remoteId: key });
+            }
+          }
+        }
+        for (let i = glueys.length - 1; i >= 0; i--) {
+          if (!glueys[i].remoteId) continue;
+          if (!payload.gluey[glueys[i].remoteId]) { const g = glueys[i]; if (g.mesh) g.mesh.visible = false; glueys.splice(i, 1); }
+        }
+      }
+      if (payload.cartoline) {
+        for (const key in payload.cartoline) {
+          const c = payload.cartoline[key];
+          let found = false;
+          for (const lc of cartolines) {
+            if (lc.remoteId === key) { lc.x = c.x; lc.y = c.y; lc.z = c.z; lc.dirX = c.dirX; lc.dirZ = c.dirZ; lc.hp = c.hp; if (lc.mesh) lc.mesh.visible = c.visible && c.dim === currentDim; found = true; break; }
+          }
+          if (!found) {
+            const freeMesh = cartolineMeshes.find(m => !m.visible);
+            if (freeMesh) {
+              freeMesh.position.set(c.x, c.y, c.z);
+              freeMesh.material.color.setHex(0xffffff);
+              freeMesh.visible = c.visible && c.dim === currentDim;
+              cartolines.push({ x: c.x, y: c.y, z: c.z, vy: 0, onGround: true, moveTimer: 999, dirX: c.dirX, dirZ: c.dirZ, mesh: freeMesh, hp: c.hp, throwCooldown: 999, flashTimer: 0, remoteId: key });
+            }
+          }
+        }
+        for (let i = cartolines.length - 1; i >= 0; i--) {
+          if (!cartolines[i].remoteId) continue;
+          if (!payload.cartoline[cartolines[i].remoteId]) { const c = cartolines[i]; if (c.mesh) c.mesh.visible = false; cartolines.splice(i, 1); }
+        }
+      }
+    }
+
+    function applyRemoteBlock(d) {
+      const bx = d.bx, by = d.by, bz = d.bz, state = d.state;
+      if (bx === undefined) return;
+      const cxc = Math.floor(bx / CHUNK), czc = Math.floor(bz / CHUNK), cyc = Math.floor(by / CHUNK);
+      const ch = ensureChunkSync(cxc, czc, cyc);
+      if (!ch) return;
+      const id = chunkLocalIdx(ch, bx, bz, by);
+      if (id < 0 || id >= ch.states.length) return;
+      if (ch.states[id] === state) return;
+      ch.states[id] = state;
+      chunkBuildQueue.push(ch.key);
+    }
+
+    function sendBlockChange(bx, by, bz, state) {
+      if (!worldId || !mpChannel) return;
+      const payload = { bx, by, bz, state, by: currentUser.id };
+      mpChannel.send({ type: 'broadcast', event: 'block', payload });
+      // Also persist to DB
+      sb.from('block_changes').insert({ world_id: worldId, bx, by, bz, state, by_uid: currentUser.id }).then(() => {}).catch(() => {});
+    }
+
+    function onRemoteBlock(payload) {
+      if (payload.by === currentUser.id) return;
+      applyRemoteBlock(payload);
+    }
+
+    function updateMultiplayer(dt) {
+      if (!worldId || !mpChannel) return;
+
+      // Position broadcast (5Hz with idle detection)
+      mpPosTimer += dt;
+      if (mpPosTimer >= 0.2) {
+        mpPosTimer = 0;
+        const pos = playerBody.position;
+        const dx = pos.x - mpLastSentPos.x, dy = pos.y - mpLastSentPos.y, dz = pos.z - mpLastSentPos.z;
+        const moved = dx*dx + dy*dy + dz*dz > 0.01;
+        const yawChanged = Math.abs(yaw - mpLastSentYaw) > 0.02;
+        const pitchChanged = Math.abs(pitch - mpLastSentPitch) > 0.02;
+        if (moved || yawChanged || pitchChanged) {
+          mpPosSeq++;
+          mpLastSentPos.copy(pos);
+          mpLastSentYaw = yaw; mpLastSentPitch = pitch;
+          mpChannel.send({
+            type: 'broadcast', event: 'pos',
+            payload: { uid: currentUser.id, x: pos.x, y: pos.y, z: pos.z, yaw, pitch, dim: currentDim, health: playerHealth, seq: mpPosSeq, t: Date.now() }
+          });
+        }
+      }
+
+      // Other player lerp
+      const lerpSpeed = 5 * dt;
+      for (const [uid, p] of otherPlayers) {
+        p.mesh.position.lerp(p.target, lerpSpeed);
+        p.mesh.rotation.y = p.yaw;
+      }
+
+      // Host mob broadcast (2Hz)
+      if (isHost) {
+        mpMobTimer += dt;
+        if (mpMobTimer >= 0.5) {
+          mpMobTimer = 0;
+          const gData = {}, cData = {};
+          glueys.forEach((g, i) => { gData['g' + i] = { x: g.x, y: g.y, z: g.z, dirX: g.dirX, dirZ: g.dirZ, hp: g.hp, panicTimer: g.panicTimer, visible: g.mesh ? g.mesh.visible : false, dim: currentDim }; });
+          cartolines.forEach((c, i) => { cData['c' + i] = { x: c.x, y: c.y, z: c.z, dirX: c.dirX, dirZ: c.dirZ, hp: c.hp, visible: c.mesh ? c.mesh.visible : false, dim: currentDim }; });
+          mpChannel.send({ type: 'broadcast', event: 'mobs', payload: { gluey: gData, cartoline: cData } });
+        }
+      }
+    }
+
+    function cleanupMultiplayer() {
+      if (mpBlockSub) { mpBlockSub.unsubscribe(); mpBlockSub = null; }
+      if (mpChannel) { mpChannel.untrack(); sb.removeChannel(mpChannel); mpChannel = null; }
+      for (const [uid, p] of otherPlayers) { scene.remove(p.mesh); p.mesh.geometry.dispose(); p.mesh.material.dispose(); }
+      otherPlayers.clear();
+      otherPlayerMeshes.length = 0;
+      if (worldId && currentUser) {
+        sb.from('player_saves').upsert({ world_id: worldId, user_id: currentUser.id, data: '{}', updated_at: new Date().toISOString() }).then(() => {}).catch(() => {});
+      }
+    }
+
+    // Initialize multiplayer
+    function initMultiplayer() {
+      if (!worldId) return;
+      mpChannel = sb.channel('world:' + worldId, { config: { broadcast: { self: false }, presence: { key: currentUser.id } } });
+
+      mpChannel.on('broadcast', { event: 'pos' }, ({ payload }) => onRemotePlayerPos(payload));
+      mpChannel.on('broadcast', { event: 'mobs' }, ({ payload }) => onRemoteMobData(payload));
+      mpChannel.on('broadcast', { event: 'block' }, ({ payload }) => onRemoteBlock(payload));
+
+      mpChannel.on('presence', { event: 'sync' }, () => {
+        const state = mpChannel.presenceState();
+        const uids = Object.keys(state).sort();
+        isHost = uids.length > 0 && uids[0] === currentUser.id;
+      });
+
+      mpChannel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await mpChannel.track({ uid: currentUser.id, joined_at: Date.now(), name: currentUser.user_metadata?.full_name || currentUser.email || 'Player' });
+          // Load existing block changes from DB for this world
+          const { data } = await sb.from('block_changes').select('*').eq('world_id', worldId).order('id', { ascending: true });
+          if (data) data.forEach(d => { if (d.by_uid !== currentUser.id) applyRemoteBlock(d); });
+          // Subscribe to new block changes via Realtime
+          mpBlockSub = sb.channel('world-blocks:' + worldId);
+          mpBlockSub.on('postgres_changes', {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'block_changes',
+            filter: 'world_id=eq.' + worldId
+          }, (change) => {
+            const d = change.new;
+            if (d.by_uid !== currentUser.id) applyRemoteBlock(d);
+          });
+          mpBlockSub.subscribe();
+        }
+      });
+    }
+
+    initMultiplayer();
+
     const sve = document.querySelector('#sensValue');
     document.querySelector('#sensSlider')?.addEventListener('input', () => {
       if (sve) sve.textContent = document.querySelector('#sensSlider').value;
@@ -1960,6 +2181,7 @@
     document.getElementById('btn-back-menu').addEventListener('click', async () => {
       if (autoSaveEnabled) await saveGame();
       if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+      if (worldId) cleanupMultiplayer();
       window.location.href = 'index.html';
     });
     document.getElementById('btn-save').addEventListener('click', saveGame);
@@ -1987,6 +2209,7 @@
     document.getElementById('btn-back-menu').addEventListener('touchstart', async (e) => {
       e.preventDefault();
       if (autoSaveEnabled) await saveGame();
+      if (worldId) cleanupMultiplayer();
       window.location.href = 'index.html';
     }, { passive: false });
 
@@ -1994,6 +2217,7 @@
     document.getElementById('btn-death-menu').addEventListener('click', async () => {
       if (autoSaveEnabled) await saveGame();
       if (document.pointerLockElement === renderer.domElement) document.exitPointerLock();
+      if (worldId) cleanupMultiplayer();
       window.location.href = 'index.html';
     });
     document.getElementById('btn-respawn').addEventListener('touchstart', (e) => {
@@ -2003,8 +2227,13 @@
     document.getElementById('btn-death-menu').addEventListener('touchstart', async (e) => {
       e.preventDefault();
       if (autoSaveEnabled) await saveGame();
+      if (worldId) cleanupMultiplayer();
       window.location.href = 'index.html';
     }, { passive: false });
+
+    window.addEventListener('beforeunload', () => {
+      if (mpChannel) { sb.removeChannel(mpChannel); }
+    });
 
     document.getElementById('making').addEventListener('click', (e) => {
       if (e.target === e.currentTarget) {
@@ -2409,6 +2638,8 @@
           saveGame();
         }
       }
+
+      if (worldId) updateMultiplayer(dt);
 
       playerBody.quaternion.setFromEuler(new THREE.Euler(0, yaw, 0));
 
@@ -2822,8 +3053,9 @@
         }
         return false;
       }
-      glueySpawnTimer += dt;
-      if (currentDim === 'paperia' && glueySpawnTimer > 3 && glueys.length < 15) {
+      if (isHost || !worldId) {
+        glueySpawnTimer += dt;
+        if (currentDim === 'paperia' && glueySpawnTimer > 3 && glueys.length < 15) {
         glueySpawnTimer = 0;
         const freeMesh = glueyMeshes.find(m => !m.visible);
         if (freeMesh) {
@@ -3059,6 +3291,7 @@
         }
       }
 
+      }
       if (isBreaking) {
         if (breakNeedsTarget) {
           breakNeedsTarget = false;

@@ -270,7 +270,9 @@
     const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let currentUser = null;
     let worldId = new URLSearchParams(location.search).get('world') || '';
-    const authReady = new Promise(resolve => {
+    const authReady = new Promise(async (resolve) => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session?.user) { currentUser = session.user; resolve(session.user); return; }
       sb.auth.onAuthStateChange((event, session) => { currentUser = session?.user || null; resolve(session?.user || null); });
     });
     let worldSeed = Math.floor(Math.random() * 2147483647);

@@ -233,7 +233,8 @@
       return d.innerHTML;
     }
 
-    sb.auth.onAuthStateChange((event, session) => {
+    async function handleAuthChange() {
+      const { data: { session } } = await sb.auth.getSession();
       const user = session?.user || null;
       currentUser = user;
       if (user) {
@@ -244,6 +245,10 @@
       } else {
         showAuth();
       }
+    }
+    handleAuthChange();
+    sb.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') handleAuthChange();
     });
 
     document.getElementById('googleBtn').addEventListener('click', () => {

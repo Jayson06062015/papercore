@@ -233,7 +233,7 @@
       return d.innerHTML;
     }
 
-    sb.auth.onAuthStateChanged((event, session) => {
+    sb.auth.onAuthStateChange((event, session) => {
       const user = session?.user || null;
       currentUser = user;
       if (user) {

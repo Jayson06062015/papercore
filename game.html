@@ -271,7 +271,7 @@
     let currentUser = null;
     let worldId = new URLSearchParams(location.search).get('world') || '';
     const authReady = new Promise(resolve => {
-      sb.auth.onAuthStateChanged((event, session) => { currentUser = session?.user || null; resolve(session?.user || null); });
+      sb.auth.onAuthStateChange((event, session) => { currentUser = session?.user || null; resolve(session?.user || null); });
     });
     let worldSeed = Math.floor(Math.random() * 2147483647);
     let worldRng = () => Math.random();

@@ -768,7 +768,7 @@
     }
     let glueys = [];
     let glueySpawnTimer = 0;
-    if (currentDim === 'paperia') {
+    if (currentDim === 'paperia' && !worldId) {
       for (let gi = 0; gi < 15; gi++) {
         const a = Math.random() * Math.PI * 2;
         const d = 5 + Math.random() * 20;
@@ -3412,7 +3412,7 @@
       }
       {
         const pp = playerBody.position;
-        if (currentDim === 'paperia') {
+    if (currentDim === 'paperia' && !worldId) {
           for (const b of beacons) {
             if (Math.abs(pp.x - b.x) <= 0.5 && Math.abs(pp.z - b.z) <= 0.5 && pp.y >= b.y && pp.y < b.y + 1000) {
               switchDimension(); break;

@@ -132,7 +132,7 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjdmdzZ2dkc256aW5vd3V2a21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NTMzMDAsImV4cCI6MjA5NjEyOTMwMH0.azrVxImOs_5T5mp-z1GUOeWHs5S01XdXvXEuW6y4FHw';
 
     const { createClient } = supabase;
-    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: sessionStorage } });
 
     let currentUser = null;
 

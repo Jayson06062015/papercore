@@ -1622,6 +1622,8 @@
         }
         ensureAboveGround();
       }
+      // Broadcast dimension switch so others see us in new dimension
+      if (mpChannel) { const p = playerBody.position; mpChannel.send({ type: 'broadcast', event: 'pos', payload: { uid: sessionId, x: p.x, y: p.y, z: p.z, yaw, pitch, dim: currentDim, health: playerHealth, seq: 0, t: Date.now() } }); }
     }
     renderer.domElement.addEventListener('mousedown', (e) => {
       if (e.button === 2 && document.pointerLockElement === renderer.domElement) {
@@ -1834,6 +1836,7 @@
 
     // -- Multiplayer (Supabase Realtime Broadcast) --
     let mpChannel = null;
+    let sessionId = crypto.randomUUID();
     let playerMeshGeo = new THREE.BoxGeometry(0.8, 0.9, 0.1);
     let playerMeshMat = new THREE.MeshStandardMaterial({ map: new THREE.TextureLoader().load('./Papey.png'), transparent: true });
     let isHost = false;
@@ -1847,7 +1850,7 @@
 
     function onRemotePlayerPos(payload) {
       const uid = payload.uid;
-      if (uid === currentUser.id) return;
+      if (uid === sessionId) return;
       let p = otherPlayers.get(uid);
       if (!p) {
         const mesh = new THREE.Mesh(playerMeshGeo, playerMeshMat.clone());
@@ -1930,38 +1933,30 @@
 
     function sendBlockChange(bx, by, bz, state) {
       if (!worldId || !mpChannel) return;
-      const payload = { bx, by, bz, state, by: currentUser.id };
+      const payload = { bx, by, bz, state, uid: sessionId };
       mpChannel.send({ type: 'broadcast', event: 'block', payload });
       // Also persist to DB
       sb.from('block_changes').insert({ world_id: worldId, bx, by, bz, state, by_uid: currentUser.id }).then(() => {}).catch(() => {});
     }
 
     function onRemoteBlock(payload) {
-      if (payload.by === currentUser.id) return;
+      if (payload.uid === sessionId) return;
       applyRemoteBlock(payload);
     }
 
     function updateMultiplayer(dt) {
       if (!worldId || !mpChannel) return;
 
-      // Position broadcast (5Hz with idle detection)
+      // Position broadcast (5Hz, always send so new players see stationary players)
       mpPosTimer += dt;
       if (mpPosTimer >= 0.2) {
         mpPosTimer = 0;
         const pos = playerBody.position;
-        const dx = pos.x - mpLastSentPos.x, dy = pos.y - mpLastSentPos.y, dz = pos.z - mpLastSentPos.z;
-        const moved = dx*dx + dy*dy + dz*dz > 0.01;
-        const yawChanged = Math.abs(yaw - mpLastSentYaw) > 0.02;
-        const pitchChanged = Math.abs(pitch - mpLastSentPitch) > 0.02;
-        if (moved || yawChanged || pitchChanged) {
-          mpPosSeq++;
-          mpLastSentPos.copy(pos);
-          mpLastSentYaw = yaw; mpLastSentPitch = pitch;
-          mpChannel.send({
-            type: 'broadcast', event: 'pos',
-            payload: { uid: currentUser.id, x: pos.x, y: pos.y, z: pos.z, yaw, pitch, dim: currentDim, health: playerHealth, seq: mpPosSeq, t: Date.now() }
-          });
-        }
+        mpPosSeq++;
+        mpChannel.send({
+          type: 'broadcast', event: 'pos',
+          payload: { uid: sessionId, x: pos.x, y: pos.y, z: pos.z, yaw, pitch, dim: currentDim, health: playerHealth, seq: mpPosSeq, t: Date.now() }
+        });
       }
 
       // Other player lerp
@@ -1998,7 +1993,7 @@
     // Initialize multiplayer
     function initMultiplayer() {
       if (!worldId) return;
-      mpChannel = sb.channel('world:' + worldId, { config: { broadcast: { self: false }, presence: { key: currentUser.id } } });
+      mpChannel = sb.channel('world:' + worldId, { config: { broadcast: { self: false }, presence: { key: sessionId } } });
 
       mpChannel.on('broadcast', { event: 'pos' }, ({ payload }) => onRemotePlayerPos(payload));
       mpChannel.on('broadcast', { event: 'mobs' }, ({ payload }) => onRemoteMobData(payload));
@@ -2007,12 +2002,15 @@
       mpChannel.on('presence', { event: 'sync' }, () => {
         const state = mpChannel.presenceState();
         const uids = Object.keys(state).sort();
-        isHost = uids.length > 0 && uids[0] === currentUser.id;
+        isHost = uids.length > 0 && uids[0] === sessionId;
       });
 
       mpChannel.subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
-          await mpChannel.track({ uid: currentUser.id, joined_at: Date.now(), name: currentUser.user_metadata?.full_name || currentUser.email || 'Player' });
+          await mpChannel.track({ uid: sessionId, joined_at: Date.now(), name: currentUser.user_metadata?.full_name || currentUser.email || 'Player' });
+          // Immediate position broadcast so others see us right away
+          const p = playerBody.position;
+          mpChannel.send({ type: 'broadcast', event: 'pos', payload: { uid: sessionId, x: p.x, y: p.y, z: p.z, yaw, pitch, dim: currentDim, health: playerHealth, seq: 0, t: Date.now() } });
           // Load existing block changes from DB for this world
           const { data } = await sb.from('block_changes').select('*').eq('world_id', worldId).order('id', { ascending: true });
           if (data) data.forEach(d => { if (d.by_uid !== currentUser.id) applyRemoteBlock(d); });

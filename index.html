@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Papercore - Main Menu</title>
   <link rel="icon" type="image/png" href="./Paper.png">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;700;900&display=swap" rel="stylesheet">
@@ -12,309 +13,131 @@
     .btn { padding:15px 30px; font-size:20px; font-family:"Poppins",sans-serif; font-weight:700; border:3px solid black; background:white; cursor:pointer; box-shadow:4px 4px 0 black; margin:10px; min-width:220px; transition:0.15s; }
     .btn:hover { background:#eee; transform:translate(-2px,-2px); box-shadow:6px 6px 0 black; }
     .btn:active { transform:translate(0,0); box-shadow:4px 4px 0 black; }
-    .btn:disabled { background:#ccc; color:#888; cursor:not-allowed; box-shadow:2px 2px 0 #999; transform:none; }
-    .btn-sm { padding:8px 16px; font-size:14px; min-width:auto; margin:0; }
-    .auth-btn { display:inline-flex; align-items:center; gap:10px; padding:12px 24px; font-size:18px; font-family:"Poppins",sans-serif; font-weight:700; border:3px solid black; cursor:pointer; box-shadow:4px 4px 0 black; margin:8px; min-width:200px; transition:0.15s; border-radius:0; }
-    .auth-btn:hover { transform:translate(-2px,-2px); box-shadow:6px 6px 0 black; }
-    .divider { display:flex; align-items:center; gap:10px; margin:16px 0; color:#888; font-size:14px; }
-    .divider::before, .divider::after { content:''; flex:1; height:1px; background:#ccc; }
-    #emailForm { display:flex; flex-direction:column; align-items:center; gap:8px; margin-top:8px; }
-    #emailForm input { width:220px; padding:10px 14px; font-size:15px; font-family:"Poppins",sans-serif; border:3px solid black; box-shadow:4px 4px 0 black; outline:none; transition:0.15s; }
-    #emailForm input:focus { box-shadow:2px 2px 0 black; transform:translate(2px,2px); }
-    .email-row { display:flex; gap:8px; }
-    .email-row .btn { min-width:auto; padding:10px 18px; font-size:14px; margin:0; }
-    .small-link { font-size:12px; color:#555; cursor:pointer; text-decoration:underline; margin-top:4px; }
-    .small-link:hover { color:#000; }
-    #authError { color:#d32f2f; font-size:13px; margin:4px 0; min-height:18px; }
-    #userInfo { display:flex; align-items:center; gap:12px; margin-bottom:16px; padding:12px 24px; background:white; border:3px solid black; box-shadow:4px 4px 0 black; flex-wrap:wrap; justify-content:center; }
-    #userInfo img { width:40px; height:40px; border-radius:50%; }
-    .name-input { font-size:18px; font-weight:700; font-family:"Poppins",sans-serif; border:2px solid #ccc; padding:4px 8px; outline:none; width:180px; }
-    .name-input:focus { border-color:black; }
-    .section-title { font-size:18px; font-weight:700; margin:16px 0 8px; }
-    .world-list { width:100%; max-width:500px; margin:12px 0; }
-    .world-item { display:flex; align-items:center; gap:8px; padding:10px 16px; background:white; border:3px solid black; box-shadow:4px 4px 0 black; margin:8px 0; transition:0.15s; }
-    .world-item .name { flex:1; font-weight:700; font-size:16px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .world-item .date { font-size:12px; color:#888; margin-right:8px; white-space:nowrap; }
-    .world-item .actions { display:flex; gap:6px; }
-    .rename-input { font-size:14px; font-family:"Poppins",sans-serif; border:2px solid black; padding:4px 8px; outline:none; width:140px; }
-    .server-btn { background:#ffd700; border-color:#b8860b; box-shadow:4px 4px 0 #b8860b; font-size:24px; padding:18px 50px; min-width:300px; margin-top:8px; }
-    .server-btn:hover { background:#ffed4a; }
-    #newWorldBtn { margin-top:8px; }
-    #loadingWorlds { font-size:14px; color:#888; margin:12px 0; }
+    .btn:disabled { opacity:0.5; cursor:not-allowed; transform:none; box-shadow:4px 4px 0 black; }
+    #auth-section { margin-bottom:20px; display:flex; flex-direction:column; align-items:center; gap:8px; }
+    #auth-section input { padding:10px 14px; font-size:16px; font-family:"Poppins",sans-serif; border:2px solid #c4b5fd; border-radius:8px; outline:none; width:240px; box-sizing:border-box; }
+    #auth-section .btn { min-width:auto; padding:10px 24px; font-size:16px; }
+    #user-info { font-size:16px; color:#4c1d95; font-weight:700; margin-bottom:12px; }
+    #error-msg { color:#dc2626; font-size:14px; font-weight:600; min-height:20px; }
   </style>
 </head>
 <body>
   <div id="menu">
     <h1>PAPERCORE</h1>
-
-    <!-- Server 1 public button (shown even before auth) -->
-    <button class="btn server-btn" id="server1Btn" style="display:none;">🌍 SERVER 1 — PLAY</button>
-
-    <div id="authSection" style="display:flex;flex-direction:column;align-items:center;">
-      <div id="authButtons">
-        <button class="auth-btn" id="googleBtn">
-          <svg width="24" height="24" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.54 28.59A14.5 14.5 0 0 1 9.5 24c0-1.59.28-3.14.76-4.59l-7.98-6.19A23.99 23.99 0 0 0 0 24c0 3.77.87 7.35 2.56 10.59l7.98-6z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6C6.51 42.62 14.62 48 24 48z"/></svg>
-          Sign in with Google
-        </button>
-        <button class="auth-btn" id="githubBtn" style="background:#222;color:white;">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-          Sign in with GitHub
-        </button>
-        <div class="divider">or</div>
-        <div id="emailForm">
-          <input type="email" id="emailInput" placeholder="Email" autocomplete="email">
-          <input type="password" id="passInput" placeholder="Password" autocomplete="current-password">
-          <div id="authError"></div>
-          <div class="email-row">
-            <button class="btn" id="signInBtn">SIGN IN</button>
-            <button class="btn" id="signUpBtn">SIGN UP</button>
-          </div>
-          <span class="small-link" id="resetLink">Forgot password?</span>
-        </div>
+    <div id="auth-section">
+      <div id="user-info"></div>
+      <input type="email" id="email-input" placeholder="Email">
+      <input type="password" id="password-input" placeholder="Password">
+      <div>
+        <button class="btn" id="sign-in-btn">SIGN IN</button>
+        <button class="btn" id="sign-up-btn">SIGN UP</button>
       </div>
+      <button class="btn" id="google-btn">SIGN IN WITH GOOGLE</button>
+      <div id="error-msg"></div>
     </div>
-
-    <div id="gameBtns" style="display:none;flex-direction:column;align-items:center;">
-      <div id="userInfo">
-        <img id="userAvatar" src="./Paper.png" alt="">
-        <input type="text" class="name-input" id="userName" maxlength="20">
-        <button class="btn btn-sm" id="saveNameBtn">SAVE</button>
-        <button class="btn btn-sm signout-btn" id="signOutBtn" style="background:#ffe0e0;">SIGN OUT</button>
-      </div>
-      <button class="btn server-btn" id="server1BtnSignedIn" style="margin-bottom:8px;">🌍 SERVER 1 — PLAY</button>
-      <div class="section-title">Your Worlds</div>
-      <div class="world-list" id="worldList"></div>
-      <div id="loadingWorlds">Loading worlds...</div>
-      <button class="btn" id="newWorldBtn">+ NEW WORLD</button>
-    </div>
+    <button class="btn" id="playBtn" disabled>SINGLE PLAYER</button>
+    <button class="btn" id="server1Btn" disabled>SERVER 1 — PLAY</button>
+    <div id="auth-loading" style="display:none;margin-top:10px;font-size:18px;font-weight:700;color:#6d28d9;">Loading...</div>
   </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
   <script>
-    // ═══════════════════════════════════════════════════════════════
-    // SUPABASE SETUP — replace these with your actual project values
-    // ═══════════════════════════════════════════════════════════════
-    // 1. Create project at https://supabase.com
-    // 2. Go to Settings > API and copy URL + anon key
-    // 3. Run the SQL below in SQL Editor
-    // ═══════════════════════════════════════════════════════════════
-    /*
-    CREATE TABLE worlds (
-      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-      name TEXT NOT NULL,
-      seed INTEGER NOT NULL DEFAULT floor(random() * 2147483647),
-      owner_id UUID REFERENCES auth.users(id),
-      created_at TIMESTAMPTZ DEFAULT NOW(),
-      updated_at TIMESTAMPTZ DEFAULT NOW()
-    );
-    CREATE TABLE block_changes (
-      id BIGSERIAL PRIMARY KEY,
-      world_id UUID REFERENCES worlds(id) NOT NULL,
-      bx INTEGER NOT NULL,
-      by INTEGER NOT NULL,
-      bz INTEGER NOT NULL,
-      state INTEGER NOT NULL,
-      by_uid UUID REFERENCES auth.users(id),
-      created_at TIMESTAMPTZ DEFAULT NOW()
-    );
-    CREATE TABLE player_saves (
-      world_id UUID REFERENCES worlds(id) NOT NULL,
-      user_id UUID REFERENCES auth.users(id) NOT NULL,
-      data JSONB NOT NULL,
-      updated_at TIMESTAMPTZ DEFAULT NOW(),
-      PRIMARY KEY (world_id, user_id)
-    );
-    -- Enable Realtime: go to Database > Replication, add block_changes to supabase_realtime publication
-    */
-    // ═══════════════════════════════════════════════════════════════
+    const firebaseConfig = {
+      apiKey: "AIzaSyBDBaTP1y_jTsONYc90d4krMgIOL9L2NFI",
+      authDomain: "papercore-online.firebaseapp.com",
+      projectId: "papercore-online",
+      storageBucket: "papercore-online.firebasestorage.app",
+      messagingSenderId: "628416077509",
+      appId: "1:628416077509:web:6a37a665e6c59f44b7daac"
+    };
+    firebase.initializeApp(firebaseConfig);
 
-    const SUPABASE_URL = 'https://ucvgsggdsnzinowuvkmp.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVjdmdzZ2dkc256aW5vd3V2a21wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA1NTMzMDAsImV4cCI6MjA5NjEyOTMwMH0.azrVxImOs_5T5mp-z1GUOeWHs5S01XdXvXEuW6y4FHw';
-
-    const { createClient } = supabase;
-    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storage: sessionStorage } });
+    const userInfo = document.getElementById('user-info');
+    const emailInput = document.getElementById('email-input');
+    const passwordInput = document.getElementById('password-input');
+    const signInBtn = document.getElementById('sign-in-btn');
+    const signUpBtn = document.getElementById('sign-up-btn');
+    const googleBtn = document.getElementById('google-btn');
+    const errorMsg = document.getElementById('error-msg');
+    const playBtn = document.getElementById('playBtn');
+    const server1Btn = document.getElementById('server1Btn');
+    const authLoading = document.getElementById('auth-loading');
 
     let currentUser = null;
 
-    const authSection = document.getElementById('authSection');
-    const gameBtns = document.getElementById('gameBtns');
-    const authButtons = document.getElementById('authButtons');
-    const userAvatar = document.getElementById('userAvatar');
-    const userName = document.getElementById('userName');
-    const saveNameBtn = document.getElementById('saveNameBtn');
-    const signOutBtn = document.getElementById('signOutBtn');
-    const worldList = document.getElementById('worldList');
-    const loadingWorlds = document.getElementById('loadingWorlds');
-    const newWorldBtn = document.getElementById('newWorldBtn');
-    const server1Btn = document.getElementById('server1Btn');
-    const server1BtnSignedIn = document.getElementById('server1BtnSignedIn');
-
-    function showAuth() {
-      authSection.style.display = 'flex';
-      gameBtns.style.display = 'none';
-      server1Btn.style.display = 'block';
-    }
-
-    function showWorlds() {
-      authSection.style.display = 'none';
-      gameBtns.style.display = 'flex';
-      server1Btn.style.display = 'none';
-    }
-
-    server1Btn.addEventListener('click', () => {
-      window.location.href = 'game.html?world=server1&mode=load&v=' + Date.now();
-    });
-    server1BtnSignedIn.addEventListener('click', () => {
-      window.location.href = 'game.html?world=server1&mode=load&v=' + Date.now();
-    });
-
-    async function loadWorldList() {
-      loadingWorlds.textContent = 'Loading worlds...';
-      worldList.innerHTML = '';
-      try {
-        const { data, error } = await sb.from('worlds').select('*').eq('owner_id', currentUser.id).order('updated_at', { ascending: false });
-        if (error) throw error;
-        if (!data || data.length === 0) {
-          loadingWorlds.textContent = 'No worlds yet. Create one!';
-          return;
-        }
-        loadingWorlds.textContent = '';
-        data.forEach(w => {
-          const time = w.updated_at ? new Date(w.updated_at).toLocaleDateString() : '';
-          const div = document.createElement('div');
-          div.className = 'world-item';
-          div.innerHTML = `
-            <span class="name">${esc(w.name)}</span>
-            <span class="date">${time}</span>
-            <div class="actions">
-              <button class="btn btn-sm play-btn">PLAY</button>
-              <button class="btn btn-sm rename-btn">RENAME</button>
-              <button class="btn btn-sm delete-btn" style="background:#ffe0e0;">DELETE</button>
-            </div>
-          `;
-          div.querySelector('.play-btn').onclick = () => {
-            window.location.href = 'game.html?world=' + w.id + '&mode=load&v=' + Date.now();
-          };
-          div.querySelector('.rename-btn').onclick = () => {
-            const input = document.createElement('input');
-            input.type = 'text';
-            input.className = 'rename-input';
-            input.value = w.name;
-            const nameEl = div.querySelector('.name');
-            nameEl.innerHTML = '';
-            nameEl.appendChild(input);
-            input.focus();
-            input.select();
-            const done = async () => {
-              const n = input.value.trim() || 'Unnamed';
-              await sb.from('worlds').update({ name: n, updated_at: new Date().toISOString() }).eq('id', w.id);
-              loadWorldList();
-            };
-            input.addEventListener('blur', done);
-            input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
-          };
-          div.querySelector('.delete-btn').onclick = async () => {
-            if (!confirm('Delete "' + w.name + '"?')) return;
-            await sb.from('worlds').delete().eq('id', w.id);
-            await sb.from('player_saves').delete().eq('world_id', w.id);
-            await sb.from('block_changes').delete().eq('world_id', w.id);
-            loadWorldList();
-          };
-          worldList.appendChild(div);
-        });
-      } catch(e) {
-        loadingWorlds.textContent = 'Error loading worlds: ' + e.message;
-      }
-    }
-
-    function esc(s) {
-      const d = document.createElement('div');
-      d.textContent = s;
-      return d.innerHTML;
-    }
-
-    async function handleAuthChange() {
-      const { data: { session } } = await sb.auth.getSession();
-      const user = session?.user || null;
+    function updateUI(user) {
       currentUser = user;
       if (user) {
-        showWorlds();
-        userAvatar.src = user.user_metadata?.avatar_url || './Paper.png';
-        userName.value = user.user_metadata?.full_name || user.email || 'Player';
-        loadWorldList();
+        userInfo.textContent = 'Signed in as ' + (user.displayName || user.email);
+        emailInput.style.display = 'none';
+        passwordInput.style.display = 'none';
+        signInBtn.style.display = 'none';
+        signUpBtn.style.display = 'none';
+        googleBtn.style.display = 'none';
+        playBtn.disabled = false;
+        server1Btn.disabled = false;
       } else {
-        showAuth();
+        userInfo.textContent = '';
+        emailInput.style.display = 'block';
+        passwordInput.style.display = 'block';
+        signInBtn.style.display = 'inline-block';
+        signUpBtn.style.display = 'inline-block';
+        googleBtn.style.display = 'inline-block';
+        playBtn.disabled = true;
+        server1Btn.disabled = true;
       }
+      errorMsg.textContent = '';
     }
-    handleAuthChange();
-    sb.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') handleAuthChange();
+
+    firebase.auth().onAuthStateChanged((user) => {
+      updateUI(user);
     });
 
-    document.getElementById('googleBtn').addEventListener('click', () => {
-      sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
-    });
-
-    document.getElementById('githubBtn').addEventListener('click', () => {
-      sb.auth.signInWithOAuth({ provider: 'github', options: { redirectTo: window.location.href } });
-    });
-
-    document.getElementById('signInBtn').addEventListener('click', async () => {
-      const e = document.getElementById('emailInput').value.trim();
-      const p = document.getElementById('passInput').value;
-      if (!e || !p) { document.getElementById('authError').textContent = 'Fill in email and password'; return; }
-      document.getElementById('authError').textContent = '';
-      const { error } = await sb.auth.signInWithPassword({ email: e, password: p });
-      if (error) document.getElementById('authError').textContent = error.message;
-    });
-
-    document.getElementById('signUpBtn').addEventListener('click', async () => {
-      const e = document.getElementById('emailInput').value.trim();
-      const p = document.getElementById('passInput').value;
-      if (!e || !p) { document.getElementById('authError').textContent = 'Fill in email and password'; return; }
-      document.getElementById('authError').textContent = '';
-      const { error } = await sb.auth.signUp({ email: e, password: p, options: { emailRedirectTo: window.location.href } });
-      if (error) document.getElementById('authError').textContent = error.message;
-      else document.getElementById('authError').textContent = 'Check your email to confirm!';
-    });
-
-    document.getElementById('resetLink').addEventListener('click', async () => {
-      const e = document.getElementById('emailInput').value.trim();
-      if (!e) { document.getElementById('authError').textContent = 'Enter your email first'; return; }
-      const { error } = await sb.auth.resetPasswordForEmail(e, { redirectTo: window.location.href });
-      if (error) document.getElementById('authError').textContent = error.message;
-      else {
-        document.getElementById('authError').textContent = 'Reset email sent!';
-        document.getElementById('authError').style.color = '#2e7d32';
-        setTimeout(() => document.getElementById('authError').style.color = '#d32f2f', 3000);
-      }
-    });
-
-    saveNameBtn.addEventListener('click', async () => {
-      const n = userName.value.trim();
-      if (!n) return;
-      const { error } = await sb.auth.updateUser({ data: { full_name: n } });
-      saveNameBtn.textContent = error ? 'ERROR' : 'SAVED!';
-      if (!error) setTimeout(() => saveNameBtn.textContent = 'SAVE', 2000);
-    });
-
-    newWorldBtn.addEventListener('click', async () => {
-      const n = prompt('World name:');
-      if (!n || !n.trim()) return;
+    signInBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      const pass = passwordInput.value;
+      if (!email || !pass) { errorMsg.textContent = 'Enter email and password'; return; }
+      authLoading.style.display = 'block';
       try {
-        const { data, error } = await sb.from('worlds').insert({
-          name: n.trim(),
-          owner_id: currentUser.id,
-          seed: Math.floor(Math.random() * 2147483647)
-        }).select().single();
-        if (error) throw error;
-        window.location.href = 'game.html?world=' + data.id + '&mode=new&v=' + Date.now();
+        await firebase.auth().signInWithEmailAndPassword(email, pass);
       } catch(e) {
-        alert('Error: ' + e.message);
+        errorMsg.textContent = e.message;
       }
+      authLoading.style.display = 'none';
     });
 
-    signOutBtn.addEventListener('click', () => sb.auth.signOut());
+    signUpBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+      const pass = passwordInput.value;
+      if (!email || !pass) { errorMsg.textContent = 'Enter email and password'; return; }
+      if (pass.length < 6) { errorMsg.textContent = 'Password must be at least 6 characters'; return; }
+      authLoading.style.display = 'block';
+      try {
+        await firebase.auth().createUserWithEmailAndPassword(email, pass);
+      } catch(e) {
+        errorMsg.textContent = e.message;
+      }
+      authLoading.style.display = 'none';
+    });
+
+    googleBtn.addEventListener('click', async () => {
+      authLoading.style.display = 'block';
+      try {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        await firebase.auth().signInWithPopup(provider);
+      } catch(e) {
+        errorMsg.textContent = e.message;
+      }
+      authLoading.style.display = 'none';
+    });
+
+    playBtn.addEventListener('click', () => {
+      window.location.href = 'game.html';
+    });
+
+    server1Btn.addEventListener('click', () => {
+      window.location.href = 'game.html?world=server1&mode=load';
+    });
   </script>
 </body>
 </html>
